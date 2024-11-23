@@ -1,14 +1,12 @@
 import {FilterSection} from "../organisms/FilterSection";
-import {InteractiveList} from "../organisms/InteractiveList";
-import { ActionBar } from "../organisms/ActionBar";
 import { Statusbar } from "../organisms/StatusBar";
-import { useEntries } from "../../hooks/EntryHook";
 import { useState } from "react";
-import { FilterSelection } from "../../hooks/EntryHook";
+import { InteractiveTable } from "../organisms/InteractiveTable";
+import { FilterSelection } from "../../selectia-rs/models";
 
 export function ManagerPage() {
     // const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
-    const [entries, filter, setFilter] = useEntries({ directories: [], tags: {} });
+    const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
 
     return (
         <div className="flex flex-col h-screen w-screen overflow-scroll">
@@ -18,7 +16,7 @@ export function ManagerPage() {
                         setFilter(filter);
                     }}
                 />
-                <InteractiveList entries={entries} className="flex-auto w-3/4 flex-grow" filter={filter} />
+                <InteractiveTable filter={filter} className="flex-auto w-3/4 flex-grow"/>
             </div>
             <Statusbar className="flex-none w-full flex" />
         </div>

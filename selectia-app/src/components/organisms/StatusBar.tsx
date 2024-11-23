@@ -3,7 +3,7 @@ import { useState } from "react";
 export function Statusbar(props: {
     className?: string;
 }) {
-    const [status, setStatus] = useState("Idle");
+    const [status, _setStatus] = useState("Idle");
 
     return <div className={`${props.className} p-2 bg-slate-800`}>
         <div className="flex flex-row">

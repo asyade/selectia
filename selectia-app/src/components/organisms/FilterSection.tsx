@@ -4,9 +4,9 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { useFolderImport } from "../../hooks/ImportFolderHook.ts";
 import { useTagNames } from "../../hooks/TagNamesHook.ts";
 import { Label } from "../atoms/Label.tsx";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTags } from "../../hooks/TagHook.ts";
-import { TagSelection, TagsSelection, FilterSelection } from "../../hooks/EntryHook.ts";
+import { TagSelection, TagsSelection, FilterSelection } from "../../selectia-rs/models";
 
 function DirectorySubSection() {
     const [folderImport] = useFolderImport();
