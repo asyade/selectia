@@ -1,0 +1,43 @@
+-- database: ../../selectia-app/selectia.db
+
+-- Use the ▷ button in the top right corner to run the entire file.
+
+SELECT * FROM entry_view;
+
+SELECT
+    metadata.id as metadata_id,
+    metadata.hash as metadata_hash,
+    JSONB_GROUP_ARRAY(
+        
+        JSON_OBJECT('id', tag.id, 'name_id', tag.name_id)
+    ) as "tags: sqlx::types::Json<Vec<TagView>>",
+    JSONB_GROUP_ARRAY(file.path) as "files: sqlx::types::Json<Vec<String>>"
+FROM 
+    metadata
+LEFT JOIN
+    metadata_tag on metadata_tag.metadata_id = metadata.id
+LEFT JOIN
+    tag on metadata_tag.tag_id = tag.id
+LEFT JOIN
+    file on file.metadata_id = metadata.id
+GROUP BY metadata.id;
+
+
+
+SELECT * FROM metadata_tag;
+
+
+SELECT
+    metadata.id as metadata_id,
+    metadata.hash as metadata_hash,
+    tag.id as tag_id,
+    tag.name_id as tag_name_id,
+    file.path as file_path
+FROM 
+    metadata
+LEFT JOIN
+    metadata_tag on metadata_tag.metadata_id = metadata.id
+LEFT JOIN
+    tag on metadata_tag.tag_id = tag.id
+LEFT JOIN
+    file on file.metadata_id = metadata.id;

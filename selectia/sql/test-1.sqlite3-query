@@ -1,0 +1,26 @@
+-- database: /home/acorbeau/Repos/selectia/selectia-app/selectia.db
+
+CREATE VIEW tagged_metadata AS
+SELECT
+    metadata_tag.metadata_id as metadata_id,
+    tag.id as tag_id,
+    tag.name_id as tag_name_id,
+    tag.value as tag_value
+FROM metadata_tag
+    LEFT JOIN tag on tag.id = metadata_tag.tag_id;
+
+
+SELECT metadata.id, metadata.hash, jsonb_group_array(jsonb_object(
+    'tag_id', tagged_metadata.tag_id, 
+    'metadata_tag_id', tagged_metadata.metadata_id,
+    'tag_name_id', tagged_metadata.tag_name_id, 
+    'tag_value', tagged_metadata.tag_value
+)) FROM metadata
+    LEFT JOIN tagged_metadata on tagged_metadata.metadata_id = metadata.id
+WHERE metadata.id IN (
+    SELECT metadata_id FROM tagged_metadata
+    WHERE tag_name_id = 2 AND tag_value LIKE '%acide'
+    GROUP BY metadata_id
+)
+GROUP BY metadata.id;
+
