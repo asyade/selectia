@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
-import { invoke } from '@tauri-apps/api/core';
+import { TagName } from "../selectia-rs/models";
+import { get_tag_names } from "../selectia-rs";
 
-interface TagName {
-    id: number;
-    name: string;
-    use_for_filtering: boolean;
-}
 
 export function useTagNames() {
     const [tagNames, setTagNames] = useState<TagName[]>([]);
  
     useEffect(() => {
-        invoke("get_tag_names").then(x => setTagNames(x as TagName[]));
+        get_tag_names().then(setTagNames);
     }, []);
 
     return [tagNames];

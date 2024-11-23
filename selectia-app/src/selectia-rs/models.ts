@@ -32,3 +32,16 @@ export interface MetadataTagView {
     tag_name_id: number,
     tag_value: string,
 }
+
+export interface TagName {
+    id: number;
+    name: string;
+    use_for_filtering: boolean;
+}
+
+export interface TagView {
+    id: number;
+    value: string;
+}
+
+export type ContextId = string;

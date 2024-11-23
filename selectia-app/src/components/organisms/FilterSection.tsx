@@ -102,7 +102,7 @@ export function FilterSection(props: {
         }
     }, [filter]);
 
-    return <div className={`${props.className} bg-slate-800 p-2`}>
+    return <div className={`${props.className} bg-slate-900 p-2`}>
         <DirectorySubSection />
         <TagsSubSection onSelectionChange={(selection) => {
             setFilter({ ...filter, tags: selection });

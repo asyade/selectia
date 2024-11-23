@@ -14,8 +14,10 @@ export interface TableRowProps {
 export function TableRow(props: TableRowProps) {
     return (
         <div className="flex flex-col">
-            {props.title_component}
-            <div className="flex flex-row">
+            <div className="p-1">
+                {props.title_component}
+            </div>
+            <div className="flex flex-row gap-2 pl-1 pr-1">
                 {props.tag_components}
             </div>
         </div>

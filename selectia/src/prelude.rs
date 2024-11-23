@@ -5,7 +5,6 @@ pub (crate) use std::path::{Path, PathBuf};
 pub (crate) use eyre::eyre;
 
 pub (crate) use crate::database::*;
-pub (crate) use crate::services::*;
 pub (crate) use tokio::{fs, sync, task};
 pub (crate) use std::collections::{HashMap, HashSet, VecDeque};
 pub (crate) use tokio::sync::{RwLock, Mutex};
@@ -13,6 +12,8 @@ pub (crate) use std::sync::Arc;
 pub (crate) use tracing::*;
 pub (crate) use std::sync::atomic::{AtomicBool, AtomicUsize};
 pub (crate) use serde::{Serialize, Deserialize};
+
+pub use crate::services::*;
 pub use crate::ext::*;
 pub use crate::tasks::load_directory::LoadDirectory;
 pub use crate::services::file_loader::{file_loader, FileLoader, FileLoaderTask};

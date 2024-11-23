@@ -24,8 +24,23 @@ pub struct EntryViewFilter {
     limit: Option<i64>,
 }
 
+impl PartialEq for EntryViewFilter {
+    fn eq(&self, other: &Self) -> bool {
+        if self.directories == other.directories && self.offset == other.offset && self.limit == other.limit {
+            for (key, value) in &self.tags {
+                if other.tags.get(key).map(|v| v != value).unwrap_or(true) {
+                    return false;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TagFilter {
     id: i64,
     selected: bool,
@@ -41,11 +56,10 @@ impl EntryViewFilter {
         )) as tags FROM metadata
             LEFT JOIN tagged_metadata on tagged_metadata.metadata_id = metadata.id
         WHERE metadata.id IN (
-            SELECT metadata_id FROM tagged_metadata
+            SELECT DISTINCT metadata_id FROM tagged_metadata as tm
     "#;
 
     const QUERY_FOOT: &str = r#"
-            GROUP BY metadata_id
         )
         GROUP BY metadata.id
     "#;
@@ -53,23 +67,37 @@ impl EntryViewFilter {
     pub async fn query(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<EntryView>> {
         let mut builder = QueryBuilder::<sqlx::Sqlite>::new(Self::QUERY_HEAD);
 
-        for (idx, (name_id, tag)) in self.tags.iter().flat_map(|(named_id, e)| e.iter().map(|tag| (*named_id, tag))).enumerate() {
+        let tags = self.tags.iter().flat_map(|(named_id, e)| e.iter().map(|tag| (*named_id, tag))).collect::<Vec<_>>();
+        for (idx, (name_id, tag)) in tags.iter().enumerate() {
             if idx == 0 {
-                builder.push("WHERE ");
+                if tags.len() > 1 {
+                    builder.push("WHERE ((");
+                } else {
+                    builder.push("WHERE (");
+                }
             } else {
-                builder.push("AND ");
+                builder.push(" OR (");
             }
-            builder.push("tag_name_id = ");
+            builder.push("tm.tag_name_id = ");
             builder.push_bind(name_id);
-            builder.push(" AND tag_id = ");
+            builder.push(" AND tm.tag_id = ");
             builder.push_bind(tag.id);
-            builder.push("\n");
+            builder.push(")");
+
+            if idx == tags.len() - 1 && tags.len() > 1 {
+                builder.push(")");
+            }
         }
 
         builder.push(Self::QUERY_FOOT);
         let query: String = builder.build().sql().into();
-        info!("Generated query: {}", &query);
-        let entries = sqlx::query_as(query.as_str()).fetch_all(pool).await?;
+        let mut query = sqlx::query_as(query.as_str());
+        for (name_id, tag) in self.tags.iter().flat_map(|(named_id, e)| e.iter().map(|tag| (*named_id, tag))) {
+            query = query.bind(name_id);
+            query = query.bind(tag.id);
+        }
+        info!("Generated query: {}", query.sql().to_string());
+        let entries = query.fetch_all(pool).await?;
         Ok(entries)
     }
 }

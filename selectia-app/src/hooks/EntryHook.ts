@@ -1,14 +1,14 @@
-import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect } from "react";
 import { EntryView, FilterSelection } from "../selectia-rs/models";
+import { get_interactive_list_context_entries } from "../selectia-rs";
 
-export function useEntries(initial_filter: FilterSelection): [EntryView[], FilterSelection, (filter: FilterSelection) => void] {
+export function useEntries(context_id: string, initial_filter: FilterSelection): [EntryView[], FilterSelection, (filter: FilterSelection) => void] {
     const [entries, setEntries] = useState<EntryView[]>([]);
     const [filter, setFilter] = useState<FilterSelection>(initial_filter);
 
     useEffect(() => {
         console.log("filter", filter);
-        invoke("get_entries", { filter: filter }).then(x => setEntries(x as EntryView[]));
+        get_interactive_list_context_entries(context_id, filter).then(setEntries);
     }, [filter]);
 
     useEffect(() => {

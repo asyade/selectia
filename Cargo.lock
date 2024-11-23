@@ -2498,6 +2498,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nucleo-matcher"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf33f538733d1a5a3494b836ba913207f14d9d4a1d3cd67030c5061bdd2cac85"
+dependencies = [
+ "memchr",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "num-bigint-dig"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3642,6 +3652,7 @@ dependencies = [
  "dotenvy",
  "eyre",
  "futures",
+ "nucleo-matcher",
  "serde",
  "serde_json",
  "sha2",
@@ -3656,6 +3667,7 @@ name = "selectia-app"
 version = "0.1.0"
 dependencies = [
  "eyre",
+ "futures",
  "lazy_static",
  "selectia",
  "serde",
@@ -3668,6 +3680,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
