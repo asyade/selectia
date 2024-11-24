@@ -28,7 +28,8 @@ CREATE TABLE metadata_tag (
     metadata_id INTEGER NOT NULL,
     tag_id INTEGER NOT NULL,
     FOREIGN KEY (metadata_id) REFERENCES metadata(id),
-    FOREIGN KEY (tag_id) REFERENCES tag(id)
+    FOREIGN KEY (tag_id) REFERENCES tag(id),
+    UNIQUE (metadata_id, tag_id)
 );
 
 CREATE VIEW tagged_metadata AS

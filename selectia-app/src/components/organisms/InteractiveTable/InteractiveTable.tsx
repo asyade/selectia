@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
-import { Table } from "../molecules/Table";
-import { useTagNames } from "../../selectia-rs/hooks/UseTagNames";
+import { Table } from "../../molecules/Table";
+import { useTagNames } from "../../../selectia-rs/hooks/UseTagNames";
 import { InteractiveTableRow } from "./InteractiveTableRow";
-import { FilterSelection, EntryViewCursor } from "../../selectia-rs";
-import { useEntries } from "../../selectia-rs/hooks/UseEntries";
-import { isDeepEqual } from "../../utils";
+import { FilterSelection, EntryViewCursor } from "../../../selectia-rs";
+import { useEntries } from "../../../selectia-rs/hooks/UseEntries";
+import { isDeepEqual } from "../../../utils";
 
 export interface InteractiveTableProps {
     className?: string;

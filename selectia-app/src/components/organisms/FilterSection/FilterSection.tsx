@@ -1,9 +1,9 @@
 import { Button } from "../../atoms/Button.tsx";
-import { IconCirclePlus, IconEyeSlash } from "../../atoms/Icon.tsx";
+import { IconCirclePlus, IconEyeSlash, IconTrash } from "../../atoms/Icon.tsx";
 import { open } from '@tauri-apps/plugin-dialog';
 import { useFolderImport } from "../../../selectia-rs/hooks/UseImportFolder.ts";
 import { useEffect, useState } from "react";
-import { TagsSubSection } from "./TagsSubSection.tsx";
+import { TagsSubSection } from "./FilterSubSectionLabels.tsx";
 import { FilterSelection } from "../../../selectia-rs/models.ts";
 import { ExpandableRegion } from "../../molecules/ExpandableRegion.tsx";
 
@@ -67,7 +67,7 @@ export function FilterSection(props: {
         </div>
     );
 
-    return <div className={`${props.className} bg-slate-900 p-2`}>
+    return <div className={`${props.className} bg-slate-900 p-2 overflow-scroll`}>
         <ExpandableRegion expanded={true} header={directoryHeader}>
             <DirectorySubSection />
         </ExpandableRegion>
@@ -78,3 +78,4 @@ export function FilterSection(props: {
         </ExpandableRegion>
         </div>;
 }
+

@@ -73,15 +73,32 @@ impl Database {
         Ok(files)
     }
 
-    pub async fn set_metadata_tag_by_tag_name_id(&self, metadata_id: i64, tag_name_id: i64, value: String) -> Result<()> {
-        let tag_id = sqlx::query_scalar!(
-            "INSERT INTO tag (name_id, value) VALUES (?, ?) RETURNING id",
+    pub async fn set_metadata_tag_by_tag_name_id(
+        &self,
+        metadata_id: i64,
+        tag_name_id: i64,
+        value: String,
+    ) -> Result<()> {
+        let existing_tag = match sqlx::query_scalar!(
+            "SELECT id FROM tag WHERE name_id = ? AND value = ?",
             tag_name_id,
             value
         )
-        .fetch_one(&self.pool)
-        .await?;
-        self.set_metadata_tag(metadata_id, tag_id).await?;
+        .fetch_optional(&self.pool)
+        .await?
+        {
+            Some(tag_id) => tag_id,
+            None => {
+                sqlx::query_scalar!(
+                    "INSERT INTO tag (name_id, value) VALUES (?, ?) RETURNING id",
+                    tag_name_id,
+                    value
+                )
+                .fetch_one(&self.pool)
+                .await?
+            }
+        };
+        self.set_metadata_tag(metadata_id, existing_tag).await?;
         Ok(())
     }
 

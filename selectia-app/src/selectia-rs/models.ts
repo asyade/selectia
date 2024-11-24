@@ -31,6 +31,7 @@ export interface MetadataTagView {
     metadata_tag_id: number,
     tag_name_id: number,
     tag_value: string,
+    metadata_id: number,
 }
 
 export interface TagName {
@@ -42,6 +43,7 @@ export interface TagName {
 export interface TagView {
     id: number;
     value: string;
+    name_id: number;
 }
 
 export type ContextId = string;

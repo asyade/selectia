@@ -1,9 +1,17 @@
-import {FilterSection} from "../organisms/FilterSection/FilterSection";
+import { FilterSection } from "../organisms/FilterSection/FilterSection";
 import { Statusbar } from "../organisms/StatusBar";
 import { useCallback, useEffect, useState } from "react";
-import { InteractiveTable } from "../organisms/InteractiveTable";
+import { InteractiveTable } from "../organisms/InteractiveTable/InteractiveTable";
 import { FilterSelection } from "../../selectia-rs/models";
 import { interactive_list_create_context, interactive_list_delete_context } from "../../selectia-rs";
+
+import { DndProvider } from 'react-dnd'
+import { HTML5Backend } from 'react-dnd-html5-backend'
+
+export const ItemTypes = {
+    INTERACTIVE_TABLE_LABEL: "interactive_table_label",
+    FILTER_SECTION_LABEL: "filter_section_label",
+}
 
 export function ManagerPage() {
     // const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
@@ -26,25 +34,29 @@ export function ManagerPage() {
         }
     }, []);
 
+
+
     return (
-        <div className="flex flex-col h-screen w-screen overflow-scroll">
-            {/* <ActionBar className="flex-none  w-full" /> */}
-            <div className="mt-12 basis-full flex w-full overflow-scroll shadow-inner">
-                <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
+        <DndProvider backend={HTML5Backend}>
+            <div className="flex flex-col h-screen w-screen overflow-scroll">
+                {/* <ActionBar className="flex-none  w-full" /> */}
+                <div className="mt-12 basis-full flex w-full overflow-scroll shadow-inner">
+                    <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
                         setFilter(filter);
                     }}
-                />
-                {
-                    contextId && (
-                        <InteractiveTable
-                            context_id={contextId}
-                            filter={filter}
-                            className="flex-auto w-3/4 flex-grow"
-                        />
-                    )
-                }
+                    />
+                    {
+                        contextId && (
+                            <InteractiveTable
+                                context_id={contextId}
+                                filter={filter}
+                                className="flex-auto w-3/4 flex-grow"
+                            />
+                        )
+                    }
+                </div>
+                <Statusbar className="flex-none w-full flex" />
             </div>
-            <Statusbar className="flex-none w-full flex" />
-        </div>
+        </DndProvider>
     );
 }

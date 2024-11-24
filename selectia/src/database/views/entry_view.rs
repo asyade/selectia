@@ -14,6 +14,7 @@ pub struct MetadataTagView {
     pub metadata_tag_id: i64,
     pub tag_name_id: i64,
     pub tag_value: String,
+    pub metadata_id: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,7 +47,8 @@ impl EntryView {
             'tag_id', tagged_metadata.tag_id, 
             'metadata_tag_id', tagged_metadata.metadata_id,
             'tag_name_id', tagged_metadata.tag_name_id, 
-            'tag_value', tagged_metadata.tag_value
+            'tag_value', tagged_metadata.tag_value,
+            'metadata_id', metadata.id
         )) as tags FROM metadata
             LEFT JOIN tagged_metadata on tagged_metadata.metadata_id = metadata.id
         WHERE metadata.id IN (

@@ -1,11 +1,34 @@
 import { Button } from "../../atoms/Button.tsx";
-import { IconEye, IconEyeSlash } from "../../atoms/Icon.tsx";
+import { IconEye, IconEyeSlash, IconTrash } from "../../atoms/Icon.tsx";
 import { useTagNames } from "../../../selectia-rs/hooks/UseTagNames.ts";
 import { Label } from "../../atoms/Label.tsx";
 import { useEffect, useState } from "react";
 import { useTags } from "../../../selectia-rs/hooks/UseTags.ts";
-import { TagSelection, TagsSelection } from "../../../selectia-rs/models.ts";
+import { TagSelection, TagsSelection, TagView } from "../../../selectia-rs/models.ts";
+import { useDrag } from 'react-dnd'
+import { ItemTypes } from "../../pages/ManagerPage.tsx";
 
+function DragableLabel(props: {
+    tag: TagView;
+    selected: boolean;
+    onClick: () => void;
+}) {
+
+    const [{ opacity }, dragRef] = useDrag(
+        () => ({
+            type: ItemTypes.FILTER_SECTION_LABEL,
+            item: props.tag,
+            collect: (monitor) => ({
+                opacity: monitor.isDragging() ? 0.5 : 1
+            })
+        }),
+        []
+    )
+
+    return (
+        <Label key={props.tag.id} innerRef={dragRef} className="flex flex-col cursor-pointer" style={{ opacity }} selectable={true} selected={props.selected} onClick={props.onClick}>{props.tag.value}</Label>
+    )
+}
 
 function TagSubSection(props: {
     name: string;
@@ -16,9 +39,13 @@ function TagSubSection(props: {
 
     const [modifierVisible, setModifierVisible] = useState(false);
 
-    const tagElements = tags.concat([{ id: -1, value: "Empty" }]).map((x, i) => <Label key={x.id} selectable={true} selected={selection[i] ? selection[i].selected : false} onClick={() => {
-        setSelection(selection.map((_, j) => j === i ? { id: x.id, value: x.value, selected: !selection[j].selected } : selection[j]));
-    }}>{x.value}</Label>);
+    const tagElements = tags.concat([{ id: -1, value: "Empty", name_id: -1 }]).map((x, i) => {
+        const selected = selection[i] ? selection[i].selected : false;
+
+        return <DragableLabel key={x.id} tag={x} selected={selected} onClick={() => {
+            setSelection(selection.map((_, j) => j === i ? { id: x.id, value: x.value, selected: !selected } : selection[j]));
+        }} />
+    });
 
     useEffect(() => {
         if (props.onSelectionChange) {
@@ -65,3 +92,4 @@ export function TagsSubSection(props: {
         {tagSections}
     </div>;
 }
+
