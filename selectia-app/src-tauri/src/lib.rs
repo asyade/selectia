@@ -1,17 +1,19 @@
 // Allow unused imports to silence warnings for early development
 #![allow(unused_imports)]
 
+use std::clone;
+
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::TagName;
 use selectia::database::views::{
     entry_view::{EntryView, EntryViewFilter},
     TagView,
 };
-use std::sync::{Arc, RwLock};
 use tauri::{Manager, State};
 
 use crate::prelude::*;
 
+mod scheduler;
 mod commands;
 mod context;
 mod error;
@@ -30,6 +32,7 @@ pub async fn run() {
     let file_loader = file_loader(state_machine.clone());
 
     let app_state = AppState(Arc::new(RwLock::new(App {
+        handle: None,
         database,
         state_machine,
         file_loader,
@@ -57,66 +60,12 @@ pub async fn run() {
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let _handle = app.handle().clone();
-    let _app_state = app.state::<AppState>().0.clone();
 
+    let app_state = app.state::<AppState>().0.clone();
+    
+    // @TODO: **Important** there is race condition here, nothing protect the app to be used during background task execution causing crash if the handle is unwraped which is the case in the `App::handle()` function
+    tokio::spawn(async move {
+        app_state.write().await.handle = Some(_handle);
+    });
     Ok(())
-}
-
-impl App {
-    pub async fn stop(self) -> eyre::Result<Self> {
-        self.file_loader.join().await?;
-        let futures: Vec<Pin<Box<dyn Future<Output = eyre::Result<()>>>>> = vec![
-            // Box::pin(self.embedding.join()),
-            // Box::pin(self.file_loader.join()),
-            Box::pin(self.state_machine.join()),
-        ];
-        futures::future::join_all(futures).await;
-        Ok(self)
-    }
-
-    pub async fn with_embedding(self) -> eyre::Result<Self> {
-        let embedding = embedding(self.state_machine.clone());
-        self.state_machine
-            .register_channel(embedding.sender().clone())
-            .await;
-        Ok(self)
-    }
-
-    pub async fn load_directory(self, path: PathBuf) -> eyre::Result<()> {
-        LoadDirectory::new(self.file_loader.clone(), path)?
-            .load()
-            .await?;
-        Ok(())
-    }
-
-    pub async fn get_tag_names(self) -> eyre::Result<Vec<TagName>> {
-        self.database.get_tag_names().await
-    }
-
-    pub async fn set_metadata_tag(
-        &self,
-        metadata_id: i64,
-        tag_name_id: i64,
-        value: String,
-    ) -> eyre::Result<()> {
-        self.database
-            .set_metadata_tag_by_tag_name_id(metadata_id, tag_name_id, value)
-            .await
-    }
-
-    pub async fn get_tags_by_name(self, tag_name: &str) -> eyre::Result<Vec<Tag>> {
-        self.database.get_tags_by_name(tag_name).await
-    }
-
-    pub async fn get_entries(&self, filter: &EntryViewFilter) -> eyre::Result<Vec<EntryView>> {
-        self.database.get_entries(filter).await
-    }
-
-    pub async fn list(self) -> eyre::Result<Self> {
-        let files = self.database.list_files().await?;
-        for file in files {
-            println!("{}", file.path);
-        }
-        Ok(self)
-    }
 }

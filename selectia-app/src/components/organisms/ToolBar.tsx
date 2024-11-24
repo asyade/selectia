@@ -1,6 +1,8 @@
 import { Button } from "../atoms/Button";
-import { IconLogo, IconMinus, IconWindowMaximize, IconXmark } from "../atoms/Icon";
+import { IconLogo, IconMinus, IconTaskManager, IconWindowMaximize, IconXmark } from "../atoms/Icon";
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { TaskManager } from "./TaskManager";
+import { DropDownButton } from "../molecules/DropDownButton";
 
 const appWindow = getCurrentWindow();
 
@@ -14,28 +16,23 @@ export function ToolBar() {
         }
     }
 
-    const handleMinimize = () => {
-        console.log("Minimize");
-        appWindow.minimize();
-    }
-
-    const handleMaximize = () => {
-        appWindow.toggleMaximize();
-    }
-
-    const handleClose = () => {
-        appWindow.close();
-    }
-
     return (
         <div className="flex flex-row justify-between items-center w-full bg-slate-900 pl-3 pr-3 fixed top-0 left-0 right-0 h-12">
             <div className="grow" onMouseDown={(e) => handleMouseDown(e)}>
                 <IconLogo />
             </div>
-            <WindowControls onMinimize={handleMinimize} onMaximize={handleMaximize} onClose={handleClose} />
+            <DropDownButton buttonContent={<IconTaskManager />} variant="outline">
+                <TaskManager />
+            </DropDownButton>
+            <WindowControls
+                onMinimize={() => appWindow.minimize()}
+                onMaximize={() => appWindow.toggleMaximize()}
+                onClose={() => appWindow.close()}
+            />
         </div>
     );
 }
+
 
 function WindowControls(props: {
     onMinimize: () => void;

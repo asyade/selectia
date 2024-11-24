@@ -67,3 +67,4 @@ export class EntryViewCursor {
         return title;
     }
 }
+

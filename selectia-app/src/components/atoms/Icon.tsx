@@ -1,3 +1,4 @@
+import { FaTasks } from "react-icons/fa";
 import { FaChevronDown, FaChevronUp, FaCirclePlus, FaCircleXmark, FaEye, FaEyeSlash, FaMinus, FaPen, FaSquare, FaWindowMaximize, FaXmark } from "react-icons/fa6";
 
 interface IconProps {
@@ -52,4 +53,8 @@ export function IconWindowMaximize(props: IconProps) {
 
 export function IconMinus(props: IconProps) {
     return <FaMinus color={props.color ? props.color : "#4b5563"} />;
+}
+
+export function IconTaskManager(props: IconProps) {
+    return <FaTasks color={props.color ? props.color : "#4b5563"} />;
 }

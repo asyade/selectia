@@ -40,14 +40,8 @@ impl PartialEq for EntryViewFilter {
 }
 
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct TagFilter {
-    id: i64,
-    selected: bool,
-}
-
-impl EntryViewFilter {
-    const QUERY_HEAD: &str = r#"
+impl EntryView {
+        const QUERY_HEAD: &str = r#"
         SELECT metadata.id as metadata_id, metadata.hash as metadata_hash, json_group_array(json_object(
             'tag_id', tagged_metadata.tag_id, 
             'metadata_tag_id', tagged_metadata.metadata_id,
@@ -64,8 +58,29 @@ impl EntryViewFilter {
         GROUP BY metadata.id
     "#;
 
+    pub async fn get_one_by_metadata_id(metadata_id: i64, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<EntryView> {
+        let mut builder = QueryBuilder::<sqlx::Sqlite>::new(EntryView::QUERY_HEAD);
+
+        builder.push("WHERE metadata.id = ");
+        builder.push_bind(metadata_id);
+
+        builder.push(EntryView::QUERY_FOOT);
+        let query: String = builder.build().sql().into();
+        let entry = sqlx::query_as(query.as_str()).bind(metadata_id).fetch_one(pool).await?;
+        Ok(entry)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TagFilter {
+    id: i64,
+    selected: bool,
+}
+
+impl EntryViewFilter {
+
     pub async fn query(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<EntryView>> {
-        let mut builder = QueryBuilder::<sqlx::Sqlite>::new(Self::QUERY_HEAD);
+        let mut builder = QueryBuilder::<sqlx::Sqlite>::new(EntryView::QUERY_HEAD);
 
         let tags = self.tags.iter().flat_map(|(named_id, e)| e.iter().map(|tag| (*named_id, tag))).collect::<Vec<_>>();
         for (idx, (name_id, tag)) in tags.iter().enumerate() {
@@ -89,7 +104,7 @@ impl EntryViewFilter {
             }
         }
 
-        builder.push(Self::QUERY_FOOT);
+        builder.push(EntryView::QUERY_FOOT);
         let query: String = builder.build().sql().into();
         let mut query = sqlx::query_as(query.as_str());
         for (name_id, tag) in self.tags.iter().flat_map(|(named_id, e)| e.iter().map(|tag| (*named_id, tag))) {

@@ -4,6 +4,7 @@ import { useTagNames } from "../../selectia-rs/hooks/UseTagNames";
 import { InteractiveTableRow } from "./InteractiveTableRow";
 import { FilterSelection, EntryViewCursor } from "../../selectia-rs";
 import { useEntries } from "../../selectia-rs/hooks/UseEntries";
+import { isDeepEqual } from "../../utils";
 
 export interface InteractiveTableProps {
     className?: string;
@@ -12,13 +13,14 @@ export interface InteractiveTableProps {
 }
 
 export function InteractiveTable(props: InteractiveTableProps) {
-    const [entries, _filter, setFilter] = useEntries(props.context_id, props.filter);
+    const [entries, filter, setFilter] = useEntries(props.context_id, props.filter);
     const [allTagNames] = useTagNames();
 
-    console.log(props.filter);
 
     useEffect(() => {
-        setFilter(props.filter);
+        if (!isDeepEqual(filter, props.filter)) {
+            setFilter(props.filter);
+        }
     }, [props.filter]);
     
     const table_components = useMemo(() => entries.map((entry) => (

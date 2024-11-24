@@ -10,6 +10,11 @@ pub struct InteractiveListContext {
     pub cache: Arc<RwLock<Option<(Vec<EntryView>, EntryViewFilter)>>>,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct TagCreationResult {
+    pub updated_entry: EntryView,
+}
+
 impl Context for InteractiveListContext {}
 
 impl InteractiveListContext {
@@ -28,10 +33,17 @@ impl InteractiveListContext {
         analyser.get_tag_creation_suggestions(tag_name_id, &input)
     }
 
-    pub async fn create_tag(&self, metadata_id: i64, name_id: i64, value: String) -> eyre::Result<()> {
+    pub async fn create_tag(&self, metadata_id: i64, name_id: i64, value: String) -> eyre::Result<EntryView> {
         info!(metadata_id, name_id, value, "Creating tag");
-        self.app.set_metadata_tag(metadata_id, name_id, value).await?;
-        Ok(())
+        self.app.database.set_metadata_tag_by_tag_name_id(metadata_id, name_id, value).await?;
+        let entry = self.app.database.get_entry_by_metadata_id(metadata_id).await?;
+        self.invalidate_cache().await;
+        Ok(entry.into())
+    }
+
+    async fn invalidate_cache(&self) {
+        let mut lock = self.cache.write().await;
+        *lock = None;
     }
 }
 

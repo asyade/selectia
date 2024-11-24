@@ -3,7 +3,7 @@ import { useClickOutside } from "../../hooks/ClickOutside";
 
 export function DropDown(props: {
     className?: string;
-    children: React.ReactNode[];
+    children: React.ReactNode[] | React.ReactNode;
     onClose: () => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TableRow } from "../molecules/Table";
 import { Label } from "../atoms/Label";
-import { DropDown } from "../molecules/DropDown";
 import { Button } from "../atoms/Button";
+import { DropDown } from "../atoms/DropDown";
 import { useClickOutside } from "../../hooks/ClickOutside";
 import { TextInput } from "../atoms/TextInput";
 import { EntryViewCursor, interactive_list_create_tag, interactive_list_get_tag_creation_suggestions, MetadataTagView, TAG_NAME_ID_DIRECTORY, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName } from "../../selectia-rs";
@@ -99,7 +99,9 @@ function IndeterminateTagComponent(props: { tagName: TagName, entry: EntryViewCu
 
     const handleSubmit = () => {
         if (value) {
-            interactive_list_create_tag(props.entry.context_id, props.entry.entry.metadata_id, props.tagName.id, value).then(props.onBlur);
+            interactive_list_create_tag(props.entry.context_id, props.entry.entry.metadata_id, props.tagName.id, value).then(() => {
+                props.onBlur();
+            });
         } else {
             props.onBlur();
         }

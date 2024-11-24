@@ -153,4 +153,8 @@ impl Database {
         info!("Getting entries");
         Ok(filter.query(&self.pool).await?)
     }
+
+    pub async fn get_entry_by_metadata_id(&self, metadata_id: i64) -> Result<EntryView> {
+        EntryView::get_one_by_metadata_id(metadata_id, &self.pool).await
+    }
 }

@@ -1,13 +1,14 @@
 use interactive_list_context::InteractiveListContext;
 use selectia::database::views::TagView;
+use tauri::Emitter;
 
 use crate::prelude::*;
 
 #[tauri::command]
 #[instrument(skip(app))]
 pub async fn interactive_list_create_context<'a>(app: AppArg<'a>) -> AppResult<String> {
-    let context = InteractiveListContext::new(app.0.read().unwrap().clone());
-    let lock = app.0.write().unwrap().interactive_list_context.clone();
+    let context = InteractiveListContext::new(app.0.read().await.clone());
+    let lock = app.0.write().await.interactive_list_context.clone();
     let id = lock.create_context(context).await;
     info!(
         context_id = id.to_string(),
@@ -18,9 +19,12 @@ pub async fn interactive_list_create_context<'a>(app: AppArg<'a>) -> AppResult<S
 
 #[tauri::command]
 #[instrument(skip(app))]
-pub async fn interactive_list_delete_context<'a>(context_id: String, app: AppArg<'a>) -> AppResult<()> {
+pub async fn interactive_list_delete_context<'a>(
+    context_id: String,
+    app: AppArg<'a>,
+) -> AppResult<()> {
     info!(context_id = context_id, "Deleting interactive list context");
-    let lock = app.0.write().unwrap().interactive_list_context.clone();
+    let lock = app.0.write().await.interactive_list_context.clone();
 
     lock.delete_context(ContextId::try_from(context_id).map_err(|e| e.to_string())?)
         .await
@@ -36,7 +40,7 @@ pub async fn interactive_list_get_tag_creation_suggestions<'a>(
     input: String,
     app: AppArg<'a>,
 ) -> AppResult<Vec<String>> {
-    let lock = app.0.read().unwrap().interactive_list_context.clone();
+    let lock = app.0.read().await.interactive_list_context.clone();
     lock.get_context(ContextId::try_from(context_id).map_err(|e| e.to_string())?)
         .await
         .map_err(|e| e.to_string())?
@@ -54,13 +58,20 @@ pub async fn interactive_list_create_tag<'a>(
     value: String,
     app: AppArg<'a>,
 ) -> AppResult<()> {
-    let lock = app.0.read().unwrap().interactive_list_context.clone();
-    lock.get_context(ContextId::try_from(context_id).map_err(|e| e.to_string())?)
-        .await
-        .map_err(|e| e.to_string())?
-        .create_tag(metadata_id, name_id, value)
-        .await
-        .map_err(|e| e.to_string())
+    let entry = {
+        let lock = app.0.read().await.interactive_list_context.clone();
+        lock.get_context(ContextId::try_from(context_id).map_err(|e| e.to_string())?)
+            .await
+            .map_err(|e| e.to_string())?
+            .create_tag(metadata_id, name_id, value)
+            .await
+            .map_err(|e| e.to_string())?
+    };
+    let handle = app.0.read().await;
+    let handle = handle.handle();
+    handle.emit("entry_changed", entry).map_err(|e| e.to_string())?;
+    handle.emit("tag_list_changed", ()).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -71,7 +82,7 @@ pub async fn get_interactive_list_context_entries<'a>(
     app: AppArg<'a>,
 ) -> AppResult<Vec<EntryView>> {
     info!("Getting interactive list context entries");
-    let lock = app.0.read().unwrap().interactive_list_context.clone();
+    let lock = app.0.read().await.interactive_list_context.clone();
 
     let context = lock
         .get_context(ContextId::try_from(context_id).map_err(|e| e.to_string())?)
@@ -89,7 +100,7 @@ pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<
     let fut = app
         .0
         .write()
-        .unwrap()
+        .await
         .clone()
         .load_directory(PathBuf::from(directory));
     fut.await.map_err(|e| e.to_string())?;
@@ -98,14 +109,14 @@ pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<
 
 #[tauri::command]
 pub async fn get_tag_names<'a>(app: AppArg<'a>) -> AppResult<Vec<TagName>> {
-    let fut = app.0.read().unwrap().clone().get_tag_names();
+    let fut = app.0.read().await.clone().get_tag_names();
     let tags = fut.await.map_err(|e| e.to_string())?;
     Ok(tags)
 }
 
 #[tauri::command]
 pub async fn get_tags_by_name<'a>(tag_name: String, app: AppArg<'a>) -> AppResult<Vec<TagView>> {
-    let fut = app.0.read().unwrap().clone().get_tags_by_name(&tag_name);
+    let fut = app.0.read().await.clone().get_tags_by_name(&tag_name);
     let tags = fut.await.map_err(|e| e.to_string())?;
     Ok(tags.into_iter().map(TagView::from).collect())
 }

@@ -11,7 +11,7 @@ function TagSubSection(props: {
     name: string;
     onSelectionChange?: (selection: TagSelection[]) => void;
 }) {
-    const [tags] = useTags(props.name);
+    const [tags] = useTags(props.name, true);
     const [selection, setSelection] = useState<TagSelection[]>([]);
 
     const [modifierVisible, setModifierVisible] = useState(false);

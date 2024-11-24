@@ -1,5 +1,7 @@
-interface ButtonProps {
-    variant?: "primary" | "outline";
+export type ButtonVariant = "primary" | "outline";
+
+export interface ButtonProps {
+    variant?: ButtonVariant;
     children: React.ReactNode;
     onClick?: () => void;
     className?: string;

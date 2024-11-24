@@ -19,7 +19,7 @@ export function FilterSection(props: {
     onFilterChange?: (filter: FilterSelection) => void;
 }) {
     const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
-
+    
     useEffect(() => {
         if (props.onFilterChange) {
             props.onFilterChange(filter);
