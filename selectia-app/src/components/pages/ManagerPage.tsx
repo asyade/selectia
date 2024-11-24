@@ -1,4 +1,4 @@
-import {FilterSection} from "../organisms/FilterSection";
+import {FilterSection} from "../organisms/FilterSection/FilterSection";
 import { Statusbar } from "../organisms/StatusBar";
 import { useCallback, useEffect, useState } from "react";
 import { InteractiveTable } from "../organisms/InteractiveTable";
@@ -29,14 +29,18 @@ export function ManagerPage() {
     return (
         <div className="flex flex-col h-screen w-screen overflow-scroll">
             {/* <ActionBar className="flex-none  w-full" /> */}
-            <div className="basis-full flex w-full overflow-scroll shadow-inner">
+            <div className="mt-12 basis-full flex w-full overflow-scroll shadow-inner">
                 <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
                         setFilter(filter);
                     }}
                 />
                 {
                     contextId && (
-                        <InteractiveTable context_id={contextId} filter={filter} className="flex-auto w-3/4 flex-grow"/>
+                        <InteractiveTable
+                            context_id={contextId}
+                            filter={filter}
+                            className="flex-auto w-3/4 flex-grow"
+                        />
                     )
                 }
             </div>

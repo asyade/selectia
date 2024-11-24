@@ -57,7 +57,15 @@ export function TextInput(props: {
                         e.preventDefault();
                     } else if (e.key === "Escape") {
                     } else if (e.key === "Enter") {
-                        props.onSubmit?.();
+                        if (
+                            props.suggestedValues &&
+                            props.suggestedValues.length > 0 &&
+                            props.suggestedValues[selectedSuggestion] !== props.value
+                        ) {
+                            props.onChange?.(props.suggestedValues[selectedSuggestion]);
+                        } else {
+                            props.onSubmit?.();
+                        }
                     }
                 }}
                 onChange={(e) => props.onChange?.(e.target.value)}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useEntries } from "../../hooks/EntryHook";
 import { Table } from "../molecules/Table";
 import { useTagNames } from "../../hooks/TagNamesHook";

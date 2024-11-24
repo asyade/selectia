@@ -10,6 +10,7 @@
     "npm:@vitejs/plugin-react@^4.2.1": "4.3.3_vite@5.4.11_@babel+core@7.26.0",
     "npm:autoprefixer@^10.4.20": "10.4.20_postcss@8.4.49",
     "npm:postcss@^8.4.49": "8.4.49",
+    "npm:react-audio-visualize@^1.2.0": "1.2.0_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:react-dom@^18.2.0": "18.3.1_react@18.3.1",
     "npm:react-icons@^5.3.0": "5.3.0_react@18.3.1",
     "npm:react@^18.2.0": "18.3.1",
@@ -902,6 +903,13 @@
     "queue-microtask@1.2.3": {
       "integrity": "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A=="
     },
+    "react-audio-visualize@1.2.0_react@18.3.1_react-dom@18.3.1__react@18.3.1": {
+      "integrity": "sha512-rfO5nmT0fp23gjU0y2WQT6+ZOq2ZsuPTMphchwX1PCz1Di4oaIr6x7JZII8MLrbHdG7UB0OHfGONTIsWdh67kQ==",
+      "dependencies": [
+        "react",
+        "react-dom"
+      ]
+    },
     "react-dom@18.3.1_react@18.3.1": {
       "integrity": "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==",
       "dependencies": [
@@ -1158,6 +1166,7 @@
         "npm:@vitejs/plugin-react@^4.2.1",
         "npm:autoprefixer@^10.4.20",
         "npm:postcss@^8.4.49",
+        "npm:react-audio-visualize@^1.2.0",
         "npm:react-dom@^18.2.0",
         "npm:react-icons@^5.3.0",
         "npm:react@^18.2.0",

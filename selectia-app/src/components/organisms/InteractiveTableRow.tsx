@@ -5,7 +5,7 @@ import { DropDown } from "../molecules/DropDown";
 import { Button } from "../atoms/Button";
 import { useClickOutside } from "../../hooks/ClickOutside";
 import { TextInput } from "../atoms/TextInput";
-import { EntryViewCursor, interactive_list_create_tag, interactive_list_get_tag_creation_suggestions, MetadataTagView, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName } from "../../selectia-rs";
+import { EntryViewCursor, interactive_list_create_tag, interactive_list_get_tag_creation_suggestions, MetadataTagView, TAG_NAME_ID_DIRECTORY, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName } from "../../selectia-rs";
 
 export function InteractiveTableRow(props: { entry: EntryViewCursor, allTagNames: TagName[] }) {
     const title = props.entry.title();
@@ -20,22 +20,25 @@ export function InteractiveTableRow(props: { entry: EntryViewCursor, allTagNames
         setTagCreation(selectedTag);
     }
 
-    const static_tag_components = useMemo(() => [
-        <ButtonAddTag key="button_add_tag" allTagNames={props.allTagNames} onAddTag={handleAddTag} />
-    ].concat(tagCreation ? [
-        <IndeterminateTagComponent tagName={tagCreation} entry={props.entry} key={`indeterminate_${tagCreation.id}`} onBlur={() => setTagCreation(null)} />
-    ] : []), [tagCreation]);
+    const static_tag_components = useMemo(() => {
+        if (tagCreation) {
+            return [<IndeterminateTagComponent tagName={tagCreation} entry={props.entry} key={`indeterminate_${tagCreation.id}`} onBlur={() => setTagCreation(null)} />]
+        } else {
+            return [<ButtonAddTag key="button_add_tag" allTagNames={props.allTagNames} onAddTag={handleAddTag} />]
+        }
+    }, [tagCreation]);
 
 
     const tag_components = useMemo(() => props.entry.entry.tags.filter((tag) => {
         return tag.tag_name_id != TAG_NAME_ID_FILE_NAME &&
-            tag.tag_name_id != TAG_NAME_ID_TITLE;
+            tag.tag_name_id != TAG_NAME_ID_TITLE &&
+            tag.tag_name_id != TAG_NAME_ID_DIRECTORY;
     }).map((tag) => (
         <TagComponent allTagNames={props.allTagNames} key={`${tag.tag_name_id}_${tag.tag_id}`} tag={tag} />
     ))
         , [props.entry.entry.tags]);
 
-    const all_tag_components = useMemo(() => static_tag_components.concat(tag_components), [static_tag_components, tag_components]);
+    const all_tag_components = useMemo(() => tag_components.concat(static_tag_components), [static_tag_components, tag_components]);
 
     return <TableRow title_component={title_component} tag_components={all_tag_components} />;
 }
@@ -52,7 +55,9 @@ function ButtonAddTag(props: { allTagNames: TagName[], onAddTag: (selectedTag: T
 
     return <div>
         <div className="relative">
-            <Label key="button_add_tag" className="cursor-pointer" onClick={() => setShowDropdown(!showDropdown)} >+</Label>
+            <Label key="button_add_tag" className="flex h-11 flex-col cursor-pointer items-center justify-center" onClick={() => setShowDropdown(!showDropdown)} >
+                <span className="text-slate-400 text-l truncate block">+</span>
+            </Label>
             {
                 showDropdown && (<ButtonAddTagDropdown allTagNames={props.allTagNames} onClose={handleClose} />)
             }
@@ -64,7 +69,7 @@ function ButtonAddTagDropdown(props: { allTagNames: TagName[], onClose: (selecte
     const drop_down_buttons = props.allTagNames.map((tag) => (
         <Button variant="outline" key={tag.id} onClick={() => props.onClose(tag)}>
             <span className="text-slate-400 text-left w-full">{tag.name}</span>
-        </Button >
+        </Button>
     ));
 
     return (

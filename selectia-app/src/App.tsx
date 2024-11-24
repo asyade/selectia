@@ -1,10 +1,14 @@
 import {ManagerPage} from "./components/pages/ManagerPage";
 
 import "./App.css";
+import { ToolBar } from "./components/organisms/ToolBar";
 
 function App() {
   return (
-    <ManagerPage />
+    <>
+      <ToolBar />
+      <ManagerPage />
+    </>
   );
 }
 
