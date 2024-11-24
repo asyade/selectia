@@ -1,5 +1,5 @@
 import { Button } from "../../atoms/Button.tsx";
-import { IconCirclePlus, IconEyeSlash, IconTrash } from "../../atoms/Icon.tsx";
+import { IconCirclePlus, IconEyeSlash } from "../../atoms/Icon.tsx";
 import { open } from '@tauri-apps/plugin-dialog';
 import { useFolderImport } from "../../../selectia-rs/hooks/UseImportFolder.ts";
 import { useEffect, useState } from "react";

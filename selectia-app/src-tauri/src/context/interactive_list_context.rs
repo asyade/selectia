@@ -1,13 +1,47 @@
+use crate::{prelude::*, App};
 use selectia::analyser::EntriesAnalyser;
 use tokio::sync::RwLock;
-use crate::{prelude::*, App};
 
 #[derive(Clone)]
 pub struct InteractiveListContext {
     pub app: App,
-    /// Cache to limit database queries
-    /// TODO: Use a more efficient cache and store multiple queries results ?
-    pub cache: Arc<RwLock<Option<(Vec<EntryView>, EntryViewFilter)>>>,
+    cache: Arc<RwLock<Cache>>,
+}
+
+struct Cache {
+    pub entries: Option<Vec<EntryView>>,
+    pub filter: Option<EntryViewFilter>,
+}
+
+impl Cache {
+    pub fn new() -> Self {
+        Self {
+            entries: None,
+            filter: None,
+        }
+    }
+
+    pub fn set(&mut self, entries: Vec<EntryView>, filter: EntryViewFilter) {
+        self.entries = Some(entries);
+        self.filter = Some(filter);
+    }
+
+    pub fn invalidate(&mut self, database: &Database) {
+        self.entries = None;
+    }
+
+    pub fn cached_entries(&self) -> Option<&Vec<EntryView>> {
+        self.entries.as_ref()
+    }
+
+    pub async fn fill(&mut self, database: &Database) -> eyre::Result<()> {
+        if let Some(filter) = &self.filter {
+            self.entries = Some(database.get_entries(filter).await?);
+            Ok(())
+        } else {
+            Err(eyre::eyre!("No filter in cache"))
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -21,34 +55,63 @@ impl InteractiveListContext {
     pub async fn get_entries(&self, filter: EntryViewFilter) -> eyre::Result<Vec<EntryView>> {
         let entries = self.app.get_entries(&filter).await?;
         let mut lock = self.cache.write().await;
-        *lock = Some((entries.clone(), filter));
+        lock.set(entries.clone(), filter);
         Ok(entries)
     }
 
-    pub async fn get_tag_creation_suggestions(&self, tag_name_id: i64, input: String) -> eyre::Result<Vec<String>> {
-        info!(tag_name_id, input, "Getting tag creation suggestions");
+    pub async fn get_tag_creation_suggestions(
+        &self,
+        tag_name_id: i64,
+        input: String,
+    ) -> eyre::Result<Vec<String>> {
+        {
+            info!(tag_name_id, input, "Getting tag creation suggestions (cached)");
+            let lock = self.cache.read().await;
+            if let Some(entries) = lock.cached_entries() {
+                return Ok(EntriesAnalyser::new(&entries).get_tag_creation_suggestions(tag_name_id, &input)?);
+            }
+        }
+
+        {
+            let mut lock = self.cache.write().await;
+            lock.fill(&self.app.database).await?;
+        }
+
+        info!(tag_name_id, input, "Getting tag creation suggestions (uncached)");
         let lock = self.cache.read().await;
-        let (entries, _) = lock.as_ref().unwrap();
-        let analyser = EntriesAnalyser::new(&entries);
-        analyser.get_tag_creation_suggestions(tag_name_id, &input)
+        let entries = lock.cached_entries().unwrap();
+        Ok(EntriesAnalyser::new(&entries).get_tag_creation_suggestions(tag_name_id, &input)?)
     }
 
-    pub async fn create_tag(&self, metadata_id: i64, name_id: i64, value: String) -> eyre::Result<EntryView> {
+    pub async fn create_tag(
+        &self,
+        metadata_id: i64,
+        name_id: i64,
+        value: String,
+    ) -> eyre::Result<EntryView> {
         info!(metadata_id, name_id, value, "Creating tag");
-        self.app.database.set_metadata_tag_by_tag_name_id(metadata_id, name_id, value).await?;
-        let entry = self.app.database.get_entry_by_metadata_id(metadata_id).await?;
-        self.invalidate_cache().await;
+        self.app
+            .database
+            .set_metadata_tag_by_tag_name_id(metadata_id, name_id, value)
+            .await?;
+        let entry = self
+            .app
+            .database
+            .get_entry_by_metadata_id(metadata_id)
+            .await?;
+        {
+            let mut lock = self.cache.write().await;
+            lock.invalidate(&self.app.database);
+        }
         Ok(entry.into())
-    }
-
-    async fn invalidate_cache(&self) {
-        let mut lock = self.cache.write().await;
-        *lock = None;
     }
 }
 
 impl InteractiveListContext {
     pub fn new(app: App) -> Self {
-        Self { app, cache: Arc::new(RwLock::new(None)) }
+        Self {
+            app,
+            cache: Arc::new(RwLock::new(Cache::new())),
+        }
     }
 }

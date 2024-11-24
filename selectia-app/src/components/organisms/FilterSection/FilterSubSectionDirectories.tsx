@@ -3,8 +3,7 @@ import { TagView } from "../../../selectia-rs";
 import { useTags } from "../../../selectia-rs/hooks/UseTags";
 import { IconFolderOpenOutline, IconFolderOutline, } from "../../atoms/Icon";
 
-export function FilterSubSectionDirectories(props: {
-}) {
+export function FilterSubSectionDirectories() {
     const [tags] = useTags("directory");
 
     const tagAsDirectoryCursor = new TagAsDirectoryCursor(tags);
@@ -14,7 +13,7 @@ export function FilterSubSectionDirectories(props: {
         return <TreeItem key={id} node={x} />
     }), [tags]);
 
-    return <div className="flex flex-wrap flex-col w-full bg-slate-800">
+    return <div className="flex flex-wrap flex-col w-full bg-slate-800 rounded-md">
         {treeItems}
     </div>;
 }
@@ -52,7 +51,7 @@ function TreeItem(props: {
 
 class TagAsDirectoryCursor {
     root: DirectoryCursorNode;
-    constructor(private tags: TagView[]) {
+    constructor(tags: TagView[]) {
         this.root = new DirectoryCursorNode("Root", []);
         for (let tag of tags) {
             let splited = tag.value.split("/");

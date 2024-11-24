@@ -14,7 +14,6 @@ export const ItemTypes = {
 }
 
 export function ManagerPage() {
-    // const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
     const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
 
     const [contextId, setContextId] = useState<string | null>(null);
@@ -33,8 +32,6 @@ export function ManagerPage() {
             }
         }
     }, []);
-
-
 
     return (
         <DndProvider backend={HTML5Backend}>

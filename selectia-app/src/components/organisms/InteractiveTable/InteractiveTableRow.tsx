@@ -102,7 +102,7 @@ function TableRowTagsSection(props: InteractiveTableRowProps) {
 function TagSectionTrashZone() {
     const [{ isOver }, drop] = useDrop(() => ({
         accept: [ ItemTypes.INTERACTIVE_TABLE_LABEL],
-        drop: (args, monitor) => {
+        drop: (_args, _monitor) => {
         },
         collect: monitor => ({
             isOver: !!monitor.isOver(),
@@ -139,7 +139,7 @@ function ButtonAddTag(props: { allTagNames: TagName[], onAddTag: (selectedTag: T
 }
 
 function ButtonAddTagDropdown(props: { allTagNames: TagName[], onClose: (selectedTag: TagName | null) => void }) {
-    const drop_down_buttons = props.allTagNames.map((tag) => (
+    const drop_down_buttons = props.allTagNames.filter(x => x.use_for_filtering).map((tag) => (
         <Button variant="outline" key={tag.id} onClick={() => props.onClose(tag)}>
             <span className="text-slate-400 text-left w-full">{tag.name}</span>
         </Button>
@@ -182,7 +182,7 @@ function IndeterminateTagComponent(props: { tagName: TagName, entry: EntryViewCu
     return (<div ref={ref}>
         <Label className="relative flex flex-col outline-dashed outline-3 outline-yellow-800">
             <span className="leading-3 text-slate-400 text-xs truncate block">{props.tagName.name}</span>
-            <TextInput suggestedValues={suggestions} autoFocus={true} onSubmit={handleSubmit} onChange={(value) => setValue(value)} value={value} />
+            <TextInput className="bg-transparent" suggestedValues={suggestions} autoFocus={true} onSubmit={handleSubmit} onChange={(value) => setValue(value)} value={value} />
         </Label>
     </div>);
 }

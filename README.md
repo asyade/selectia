@@ -42,3 +42,26 @@ Selectia can convert audio files to different formats to ensure compatibility ac
 Selectia can upscale audio files to improve the playback quality.
 
 ### Playlists
+
+<details>
+    <summary>Developper guide</summary>
+
+### Dependencies
+
+- Node.js (>22 recommended)
+- Yarn
+- Rust nightly
+- SQLite system library
+
+### Running the app in dev mode
+
+Run the app
+
+> Make sure to have the database file `selectia/selectia.db` present otherwise run `scripts/    regenerate_db.sh` to create it.
+
+```bash
+export DATABASE_URL=sqlite://selectia/selectia.db
+yarn tauri dev
+```
+
+</details>

@@ -1,7 +1,6 @@
 import { TagName } from "../../../selectia-rs";
 
 import { MetadataTagView } from "../../../selectia-rs";
-import { Button } from "../../atoms/Button";
 import { Label } from "../../atoms/Label";
 import { useDrag } from 'react-dnd'
 import { ItemTypes } from "../../pages/ManagerPage";
@@ -26,10 +25,4 @@ export function InteractiveTableLabel(props: { allTagNames: TagName[], tag: Meta
             <span className="text-slate-400 text-md truncate block">{props.tag.tag_value}</span>
         </Label>
     );
-}
-
-function TagContextualMenu(props: { tag: MetadataTagView }) {
-    return <div>
-        <Button variant="outline">-</Button>
-    </div>;
 }
