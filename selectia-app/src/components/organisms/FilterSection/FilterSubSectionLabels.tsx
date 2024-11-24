@@ -1,12 +1,35 @@
 import { Button } from "../../atoms/Button.tsx";
-import { IconEye, IconEyeSlash, IconTrash } from "../../atoms/Icon.tsx";
-import { useTagNames } from "../../../selectia-rs/hooks/UseTagNames.ts";
+import { IconEye, IconEyeSlash } from "../../atoms/Icon.tsx";
 import { Label } from "../../atoms/Label.tsx";
 import { useEffect, useState } from "react";
 import { useTags } from "../../../selectia-rs/hooks/UseTags.ts";
-import { TagSelection, TagsSelection, TagView } from "../../../selectia-rs/models.ts";
+import { TagName, TagSelection, TagsSelection, TagView } from "../../../selectia-rs/models.ts";
 import { useDrag } from 'react-dnd'
 import { ItemTypes } from "../../pages/ManagerPage.tsx";
+
+
+export function FilterSubSectionLabels(props: {
+    onSelectionChange?: (selection: TagsSelection) => void;
+    className?: string;
+    tagNames: TagName[];
+}) {
+    const [selectedTags, setSelectedTags] = useState<TagsSelection>({});
+    const tagSections = props.tagNames.filter(x => x.use_for_filtering).map(x => <TagSubSection onSelectionChange={(selected) => {
+        setSelectedTags({ ...selectedTags, [x.id]: selected.filter(y => y.selected) });
+    }} key={x.id} name={x.name} />)
+
+    useEffect(() => {
+        if (props.onSelectionChange) {
+            props.onSelectionChange(selectedTags);
+        }
+    }, [selectedTags]);
+
+    return <div className={`${props.className} flex flex-col rounded-md bg-slate-800`}>
+        {tagSections}
+    </div>;
+}
+
+
 
 function DragableLabel(props: {
     tag: TagView;
@@ -71,25 +94,3 @@ function TagSubSection(props: {
         </div>
     </div>;
 }
-
-export function TagsSubSection(props: {
-    onSelectionChange?: (selection: TagsSelection) => void;
-    className?: string;
-}) {
-    const [tagNames] = useTagNames();
-    const [selectedTags, setSelectedTags] = useState<TagsSelection>({});
-    const tagSections = tagNames.filter(x => x.use_for_filtering).map(x => <TagSubSection onSelectionChange={(selected) => {
-        setSelectedTags({ ...selectedTags, [x.id]: selected.filter(y => y.selected) });
-    }} key={x.id} name={x.name} />)
-
-    useEffect(() => {
-        if (props.onSelectionChange) {
-            props.onSelectionChange(selectedTags);
-        }
-    }, [selectedTags]);
-
-    return <div className={`${props.className} flex flex-col rounded-md bg-slate-800`}>
-        {tagSections}
-    </div>;
-}
-

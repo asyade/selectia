@@ -19,13 +19,8 @@ export function useEntries(context_id: string, initial_filter: FilterSelection):
     }, []);
 
     useEffect(() => {
-        console.log("filter", filter);
         get_interactive_list_context_entries(context_id, filter).then(setEntries);
     }, [filter]);
-
-    useEffect(() => {
-        console.log("entries", entries);
-    }, [entries]);
 
     return [entries, filter, setFilter]
 }

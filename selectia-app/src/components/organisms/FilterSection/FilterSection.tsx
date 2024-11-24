@@ -3,23 +3,19 @@ import { IconCirclePlus, IconEyeSlash, IconTrash } from "../../atoms/Icon.tsx";
 import { open } from '@tauri-apps/plugin-dialog';
 import { useFolderImport } from "../../../selectia-rs/hooks/UseImportFolder.ts";
 import { useEffect, useState } from "react";
-import { TagsSubSection } from "./FilterSubSectionLabels.tsx";
+import { FilterSubSectionLabels } from "./FilterSubSectionLabels.tsx";
 import { FilterSelection } from "../../../selectia-rs/models.ts";
 import { ExpandableRegion } from "../../molecules/ExpandableRegion.tsx";
-
-function DirectorySubSection() {
-    return <div className="flex flex-row w-full bg-slate-800">
-        <div className="flex-auto flex justify-center">
-        </div>
-    </div>;
-}
+import { FilterSubSectionDirectories } from "./FilterSubSectionDirectories.tsx";
+import { useTagNames } from "../../../selectia-rs/hooks/UseTagNames.ts";
 
 export function FilterSection(props: {
     className?: string;
     onFilterChange?: (filter: FilterSelection) => void;
 }) {
     const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
-    
+    const [tagNames] = useTagNames();
+
     useEffect(() => {
         if (props.onFilterChange) {
             props.onFilterChange(filter);
@@ -69,10 +65,10 @@ export function FilterSection(props: {
 
     return <div className={`${props.className} bg-slate-900 p-2 overflow-scroll`}>
         <ExpandableRegion expanded={true} header={directoryHeader}>
-            <DirectorySubSection />
+            <FilterSubSectionDirectories />
         </ExpandableRegion>
         <ExpandableRegion expanded={true} header={tagHeader}>
-            <TagsSubSection className="p-2" onSelectionChange={(selection) => {
+            <FilterSubSectionLabels className="p-2" tagNames={tagNames} onSelectionChange={(selection) => {
                 setFilter({ ...filter, tags: selection });
             }} />
         </ExpandableRegion>
