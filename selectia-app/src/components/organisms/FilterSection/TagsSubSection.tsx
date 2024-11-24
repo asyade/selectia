@@ -45,7 +45,6 @@ function TagSubSection(props: {
     </div>;
 }
 
-
 export function TagsSubSection(props: {
     onSelectionChange?: (selection: TagsSelection) => void;
     className?: string;
