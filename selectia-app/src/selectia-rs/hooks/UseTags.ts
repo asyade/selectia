@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { TagView } from "../selectia-rs/models";
-import { get_tags_by_name } from "../selectia-rs";
+import { TagView } from "../models";
+import { get_tags_by_name } from "..";
 
 export function useTags(name: string) {
     const [tags, setTags] = useState<TagView[]>([]);

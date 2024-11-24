@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { useEntries } from "../../hooks/EntryHook";
+import { useEffect, useMemo } from "react";
 import { Table } from "../molecules/Table";
-import { useTagNames } from "../../hooks/TagNamesHook";
+import { useTagNames } from "../../selectia-rs/hooks/UseTagNames";
 import { InteractiveTableRow } from "./InteractiveTableRow";
 import { FilterSelection, EntryViewCursor } from "../../selectia-rs";
+import { useEntries } from "../../selectia-rs/hooks/UseEntries";
 
 export interface InteractiveTableProps {
     className?: string;

@@ -1,7 +1,7 @@
 import { Button } from "../../atoms/Button.tsx";
-import { IconCirclePlus, IconEdit, IconEyeSlash } from "../../atoms/Icon.tsx";
+import { IconCirclePlus, IconEyeSlash } from "../../atoms/Icon.tsx";
 import { open } from '@tauri-apps/plugin-dialog';
-import { useFolderImport } from "../../../hooks/ImportFolderHook.ts";
+import { useFolderImport } from "../../../selectia-rs/hooks/UseImportFolder.ts";
 import { useEffect, useState } from "react";
 import { TagsSubSection } from "./TagsSubSection.tsx";
 import { FilterSelection } from "../../../selectia-rs/models.ts";
@@ -68,10 +68,10 @@ export function FilterSection(props: {
     );
 
     return <div className={`${props.className} bg-slate-900 p-2`}>
-        <ExpandableRegion  header={directoryHeader}>
+        <ExpandableRegion expanded={true} header={directoryHeader}>
             <DirectorySubSection />
         </ExpandableRegion>
-        <ExpandableRegion header={tagHeader}>
+        <ExpandableRegion expanded={true} header={tagHeader}>
             <TagsSubSection className="p-2" onSelectionChange={(selection) => {
                 setFilter({ ...filter, tags: selection });
             }} />

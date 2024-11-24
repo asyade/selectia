@@ -11,7 +11,7 @@ pub fn embedding(state_machine: StateMachine) -> Embedding {
     ThreadedService::new(move |receiver| embedding_task(receiver, state_machine))
 }
 
-fn embedding_task(mut receiver: sync::mpsc::Receiver<StateMachineEvent>, state_machine: StateMachine) -> Result<()> {
+fn embedding_task(_receiver: sync::mpsc::Receiver<StateMachineEvent>, _state_machine: StateMachine) -> Result<()> {
     // let model = SentenceEmbeddingsBuilder::remote(
     //     SentenceEmbeddingsModelType::AllMiniLmL12V2
     // ).create_model()?;
@@ -35,7 +35,7 @@ fn embedding_task(mut receiver: sync::mpsc::Receiver<StateMachineEvent>, state_m
     Ok(())
 }
 
-fn prepare_path_for_embedding(path: String) -> String {
+fn _prepare_path_for_embedding(path: String) -> String {
     let path_buf = PathBuf::from(path);
     let count = path_buf.iter().count();
 

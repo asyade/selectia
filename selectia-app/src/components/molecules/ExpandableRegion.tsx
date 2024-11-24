@@ -4,10 +4,11 @@ import { IconChevronDown, IconChevronUp } from "../atoms/Icon";
 
 export function ExpandableRegion(props: {
     className?: string;
+    expanded?: boolean;
     children: React.ReactNode;
     header: React.ReactNode;
 }) {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = useState(props.expanded ?? false);
 
     return <div className={`${props.className} flex flex-col`}>
         <div className="flex flex-row item-between">

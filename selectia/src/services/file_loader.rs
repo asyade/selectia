@@ -15,7 +15,7 @@ pub fn file_loader(state_machine: StateMachine) -> FileLoader {
     AddressableService::new(move |receiver| file_loader_task(state_machine, receiver))
 }
 
-async fn file_loader_task(state_machine: StateMachine, mut receiver: sync::mpsc::Receiver<FileLoaderTask>) -> Result<()> {
+async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Receiver<FileLoaderTask>) -> Result<()> {
     let stream = futures::stream::unfold(receiver, |mut recv| async move {
         recv.recv().await.map(|task| (task, recv))
     }).map(|file| async {

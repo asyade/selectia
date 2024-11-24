@@ -7,11 +7,11 @@ pub struct GenerateClusterTask {
 
 impl GenerateClusterTask {
     pub async fn new(database: Database) -> Result<Self> {
-        let tags = database.list_files().await?;
+        let _tags = database.list_files().await?;
 
         let barier = Arc::new(tokio::sync::Mutex::new(()));
         let lock = barier.clone().lock_owned().await;
-        let handle = std::thread::spawn(move || {
+        let _handle = std::thread::spawn(move || {
 
             // let mut config: TokenClassificationConfig = Default::default();
             // // config.strip_accents = Some(true);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { TagName } from "../selectia-rs/models";
-import { get_tag_names } from "../selectia-rs";
+import { TagName } from "../models";
+import { get_tag_names } from "..";
 
 
 export function useTagNames() {

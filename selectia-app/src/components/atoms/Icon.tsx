@@ -28,7 +28,7 @@ export function IconEdit(props: IconProps) {
     return <FaPen color={props.color ? props.color : "#4b5563"} />;
 }
 
-export function IconLogo(props: IconProps) {
+export function IconLogo(_props: IconProps) {
     return <img src="/src/assets/logo.png" alt="Selectia" className="w-6 h-6 mr-2" />;
 }
 

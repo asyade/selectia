@@ -1,9 +1,9 @@
 import { Button } from "../../atoms/Button.tsx";
 import { IconEye, IconEyeSlash } from "../../atoms/Icon.tsx";
-import { useTagNames } from "../../../hooks/TagNamesHook.ts";
+import { useTagNames } from "../../../selectia-rs/hooks/UseTagNames.ts";
 import { Label } from "../../atoms/Label.tsx";
 import { useEffect, useState } from "react";
-import { useTags } from "../../../hooks/TagHook.ts";
+import { useTags } from "../../../selectia-rs/hooks/UseTags.ts";
 import { TagSelection, TagsSelection } from "../../../selectia-rs/models.ts";
 
 
@@ -62,7 +62,7 @@ export function TagsSubSection(props: {
         }
     }, [selectedTags]);
 
-    return <div className={`${props.className} flex flex-col bg-slate-800`}>
+    return <div className={`${props.className} flex flex-col rounded-md bg-slate-800`}>
         {tagSections}
     </div>;
 }

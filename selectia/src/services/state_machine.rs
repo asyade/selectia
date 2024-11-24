@@ -17,6 +17,7 @@ impl CancelableTask  for StateMachineEvent {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct StateMachineTask {
     owner: TaskOwner,

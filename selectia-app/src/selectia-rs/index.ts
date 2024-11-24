@@ -35,7 +35,6 @@ export async function import_folder(directory: string): Promise<boolean> {
     return await invoke("import_folder", { directory }).then(x => x as boolean);
 }
 
-
 export class EntryViewCursor {
     entry: EntryView;
     context_id: ContextId;

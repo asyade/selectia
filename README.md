@@ -22,6 +22,10 @@ Selectia can also suggest tags based on the file name, the file path, the audio 
 
 Selectia can analyze audio files to extract metadata such as bpm, key, energy, danceability, etc...
 
+### Audio editing
+
+Selectia can edit audio files to remove silence, normalize volume, etc...
+It can host VST plugins to apply custom effects to audio files as well.
 
 ### Audio file normalization
 

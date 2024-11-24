@@ -1,5 +1,5 @@
 import { Button } from "../atoms/Button";
-import { IconCircleXMark, IconLogo, IconMinus, IconSquare, IconWindowMaximize, IconXmark } from "../atoms/Icon";
+import { IconLogo, IconMinus, IconWindowMaximize, IconXmark } from "../atoms/Icon";
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 const appWindow = getCurrentWindow();

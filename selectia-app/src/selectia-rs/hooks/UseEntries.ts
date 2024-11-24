@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { EntryView, FilterSelection } from "../selectia-rs/models";
-import { get_interactive_list_context_entries } from "../selectia-rs";
+import { EntryView, FilterSelection } from "../models";
+import { get_interactive_list_context_entries } from "..";
 
 export function useEntries(context_id: string, initial_filter: FilterSelection): [EntryView[], FilterSelection, (filter: FilterSelection) => void] {
     const [entries, setEntries] = useState<EntryView[]>([]);
