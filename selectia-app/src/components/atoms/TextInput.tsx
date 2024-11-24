@@ -7,6 +7,7 @@ export function TextInput(props: {
     autoFocus?: boolean,
     onSubmit?: () => void,
     value?: string,
+    placeholder?: string,
     suggestedValues?: string[],
 }) {
     const [selectedSuggestion, setSelectedSuggestion] = useState<number>(0);
@@ -42,12 +43,13 @@ export function TextInput(props: {
     return (
         <div className="p-0 m-0">
             <input
+                placeholder={props.placeholder}
                 autoFocus={props.autoFocus}
                 className={`
-                    transition duration-300 ease text-sm w-full bg-transparent placeholder:text-slate-300 text-white text-sm
-                    border border-slate-400 rounded-md focus:outline-none focus:border-none hover:border-none shadow-none focus:shadow-none
-                    ${props.className}
-                `}
+                    ${props.className} 
+                    transition duration-300 ease text-sm w-full placeholder:text-slate-300 text-white text-sm
+                    border-none rounded-md focus:outline-none focus:border-none hover:border-none shadow-none focus:shadow-none
+                    `}
                 onKeyDown={(e) => {
                     if (e.key === "ArrowUp") {
                         selectionDelta(-1);

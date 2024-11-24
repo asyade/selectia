@@ -9,8 +9,8 @@ export interface ButtonProps {
 
 export function Button(props: ButtonProps) {
     if (props.variant === "outline") {
-        return <button className={`${props.className} p-2 flex items-center justify-center rounded hover:bg-slate-700`} onClick={() => props.onClick?.()}>{props.children}</button>;
+        return <button onMouseDown={(e) => e.preventDefault()} className={`${props.className} p-2 flex items-center justify-center rounded hover:bg-slate-700`} onClick={() => props.onClick?.()}>{props.children}</button>;
     } else {
-        return <button className={`${props.className} p-2 flex items-center justify-center rounded hover:bg-blue-700 bg-blue-500`} onClick={() => props.onClick?.()}>{props.children}</button>;
+        return <button onMouseDown={(e) => e.preventDefault()} className={`${props.className} p-2 flex items-center justify-center rounded hover:bg-blue-700 bg-blue-500`} onClick={() => props.onClick?.()}>{props.children}</button>;
     }
 }

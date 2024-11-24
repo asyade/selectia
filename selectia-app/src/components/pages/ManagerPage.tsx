@@ -19,6 +19,8 @@ export function ManagerPage() {
 
     const [contextId, setContextId] = useState<string | null>(null);
 
+    const [filterSectionWidth, setFilterSectionWidth] = useState(100);
+
     const deleteContext = useCallback(() => {
         if (contextId) {
             interactive_list_delete_context(contextId);
@@ -33,8 +35,6 @@ export function ManagerPage() {
             }
         }
     }, []);
-
-
 
     return (
         <DndProvider backend={HTML5Backend}>
