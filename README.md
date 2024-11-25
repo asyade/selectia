@@ -42,3 +42,18 @@ Selectia can convert audio files to different formats to ensure compatibility ac
 Selectia can upscale audio files to improve the playback quality.
 
 ### Playlists
+
+## Development
+
+### Dependencies
+
+- Node.js (>22 recommended)
+- Yarn
+- Rust nightly
+- SQLite system library
+
+### Running the app in dev mode
+
+```bash
+yarn tauri dev
+```
