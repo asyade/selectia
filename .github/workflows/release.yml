@@ -52,7 +52,7 @@ jobs:
         run: cd selectia-app && yarn install
 
       - name: regenerate database
-        run: ./scripts/regenerate_db.shgi
+        run: ./scripts/regenerate_db.sh
 
       - uses: tauri-apps/tauri-action@v0
         env:
