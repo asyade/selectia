@@ -46,4 +46,20 @@ export interface TagView {
     name_id: number;
 }
 
+export interface WorkerQueueTask {
+    id: number;
+    status: string;
+}
+
+export type WorkerQueueTaskCreatedEvent = {
+    id: number;
+    status: string;
+}
+
+export type WorkerQueueTaskUpdatedEvent = {
+    id: number;
+    task?: WorkerQueueTask;
+}
+
+
 export type ContextId = string;

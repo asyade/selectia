@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ContextId, EntryView, FilterSelection, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName, TagView } from "./models";
+import { ContextId, EntryView, FilterSelection, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName, TagView, WorkerQueueTask } from "./models";
 
 export * from "./models";
 
@@ -33,6 +33,14 @@ export async function get_tag_names(): Promise<TagName[]> {
 
 export async function import_folder(directory: string): Promise<boolean> {
     return await invoke("import_folder", { directory }).then(x => x as boolean);
+}
+
+export async function get_worker_queue_tasks(): Promise<WorkerQueueTask[]> {
+    return await invoke("get_worker_queue_tasks").then(x => x as WorkerQueueTask[]);
+}
+
+export async function get_worker_queue_task(task_id: number): Promise<WorkerQueueTask> {
+    return await invoke("get_worker_queue_task", { task_id }).then(x => x as WorkerQueueTask);
 }
 
 export class EntryViewCursor {

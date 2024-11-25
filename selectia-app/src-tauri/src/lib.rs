@@ -40,6 +40,8 @@ pub async fn run() {
             interactive_list_create_tag,
             interactive_list_delete_context,
             interactive_list_create_context,
+            get_worker_queue_tasks,
+            get_worker_queue_task,
         ])
         .setup(setup)
         .run(tauri::generate_context!())

@@ -192,6 +192,13 @@ impl Database {
         Ok(task)
     }
 
+    pub async fn get_tasks(&self) -> Result<Vec<models::Task>> {
+        let tasks = sqlx::query_as!(models::Task, "SELECT * FROM task")
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(tasks)
+    }
+
     pub async fn delete_task(&self, id: i64) -> Result<()> {
         sqlx::query!("DELETE FROM task WHERE id = ?", id)
             .execute(&self.pool)
@@ -199,6 +206,10 @@ impl Database {
         Ok(())
     }
 
+    /// Dequeue a task from the queue
+    /// This function will set the status of the task first task with queued status to processing
+    ///
+    /// Returns the task or none if no task is in queued status
     pub async fn dequeue_task(&self) -> Result<Option<models::Task>> {
         let task = sqlx::query_as!(models::Task, r#"
             UPDATE task SET status = 'processing'
@@ -208,5 +219,14 @@ impl Database {
             .fetch_optional(&self.pool)
             .await?;
         Ok(task)
+    }
+
+    /// Sanitize task status to ensure that no task is in processing status
+    /// This function should be called when before worker start processing tasks
+    pub async fn sanitize_task_status(&self) -> Result<u64> {
+        let result = sqlx::query!("UPDATE task SET status = 'queued' WHERE status = 'processing'")
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected())
     }
 }

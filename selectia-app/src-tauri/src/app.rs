@@ -1,7 +1,8 @@
 use interactive_list_context::InteractiveListContext;
+use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
 use tauri::{AppHandle, Emitter, State};
-use worker::{tasks::{BackgroundTask, FileAnalysisTask, TaskPayload}, worker, Worker, WorkerTask};
+use worker::{tasks::{BackgroundTask, FileAnalysisTask, TaskPayload, TaskStatus}, worker, Worker, WorkerEvent, WorkerTask};
 
 use crate::prelude::*;
 
@@ -20,10 +21,22 @@ pub struct AppState(pub(crate) Arc<RwLock<App>>);
 pub type AppArg<'a> = State<'a, AppState>;
 
 #[derive(Serialize, Clone)]
-pub struct FileIngestedEvent {
-    is_new: bool,
-    metadata_id: i64,
+pub struct WorkerQueueTaskCreatedEvent {
+    task: WorkerQueueTask,
 }
+
+#[derive(Serialize, Clone)]
+pub struct WorkerQueueTaskUpdatedEvent {
+    id: i64,
+    task: Option<WorkerQueueTask>,
+}
+
+#[derive(Deserialize,Serialize, Clone)]
+pub struct WorkerQueueTask {
+    pub id: i64,
+    pub status: TaskStatus,
+}
+
 
 impl App {
     pub async fn new() -> Self {
@@ -47,8 +60,34 @@ impl App {
 
     pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
         self.handle = Some(handle.clone());
-        let app_handle = self.clone();
 
+        self.worker.register_channel(channel_iterator(move |msg| {
+            let handle = handle.clone();
+            async move {
+                match msg {
+                    WorkerEvent::QueueTaskCreated { id, status } => {
+                        let task = WorkerQueueTask { id, status };
+                        let _ = handle.emit("worker-queue-task-created", WorkerQueueTaskCreatedEvent{
+                            task
+                        });
+                    },
+                    WorkerEvent::QueueTaskUpdated { id, status, removed } => {
+                        let task = if removed {
+                            None
+                        } else {
+                            Some(WorkerQueueTask {
+                                id,
+                                status,
+                            })
+                        };
+                        let _ = handle.emit("worker-queue-task-updated", WorkerQueueTaskUpdatedEvent { id, task  });
+                    }
+                    _ => {}
+                }
+            }
+        })).await;
+
+        let app_handle = self.clone();
         self.state_machine
             .register_channel(channel_iterator(move |msg| {
                 let app_handle = app_handle.clone();
