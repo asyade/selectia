@@ -8,7 +8,7 @@ on:
 jobs:
   publish-tauri:
     env:
-      DATABASE_URL: "sqlite://selectia.db"
+      DATABASE_URL: "sqlite://./selectia/selectia.db"
     permissions:
       contents: write
     strategy:
