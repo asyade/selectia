@@ -8,7 +8,7 @@ on:
 jobs:
   publish-tauri:
     env:
-      DATABASE_URL: "sqlite://selectia.db"
+      DATABASE_URL: "sqlite://./selectia/selectia.db"
     permissions:
       contents: write
     strategy:
@@ -51,9 +51,6 @@ jobs:
 
       - name: install frontend dependencies
         run: cd selectia-app && yarn install
-
-      - name: regenerate database
-        run: ./scripts/regenerate_db.sh
 
       - uses: tauri-apps/tauri-action@v0
         env:
