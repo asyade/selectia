@@ -39,7 +39,7 @@ jobs:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: install database dependencies
-        run: sudo apt-get install -y libsqlite3-dev && cargo install sqlx-cli
+        run: cargo install sqlx-cli
 
 
       - name: install dependencies (ubuntu only)
