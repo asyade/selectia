@@ -38,6 +38,10 @@ jobs:
           # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
+      - name: install database dependencies
+        run: sudo apt-get install -y libsqlite3-dev && cargo install sqlx-cli
+
+
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
         run: |
@@ -48,7 +52,7 @@ jobs:
         run: cd selectia-app && yarn install
 
       - name: regenerate database
-        run: ./scripts/regenerate_db.sh
+        run: ./scripts/regenerate_db.shgi
 
       - uses: tauri-apps/tauri-action@v0
         env:
