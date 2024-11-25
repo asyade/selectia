@@ -35,25 +35,25 @@ export function ManagerPage() {
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <div className="flex flex-col h-screen w-screen overflow-scroll">
+
+            <div className="flex flex-grow overflow-scroll w-full">
+
                 {/* <ActionBar className="flex-none  w-full" /> */}
-                <div className="mt-12 basis-full flex w-full overflow-scroll shadow-inner">
-                    <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
-                        setFilter(filter);
-                    }}
-                    />
-                    {
-                        contextId && (
-                            <InteractiveTable
-                                context_id={contextId}
-                                filter={filter}
-                                className="flex-auto w-3/4 flex-grow"
-                            />
-                        )
-                    }
-                </div>
-                <Statusbar className="flex-none w-full flex" />
+                <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
+                    setFilter(filter);
+                }}
+                />
+                {
+                    contextId && (
+                        <InteractiveTable
+                            context_id={contextId}
+                            filter={filter}
+                            className="flex-auto w-3/4 flex-grow"
+                        />
+                    )
+                }
             </div>
         </DndProvider>
+
     );
 }

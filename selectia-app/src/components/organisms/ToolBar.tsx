@@ -1,11 +1,14 @@
 import { Button } from "../atoms/Button";
-import { IconLogo, IconMinus, IconWindowMaximize, IconXmark } from "../atoms/Icon";
+import { IconBack, IconGear, IconLogo, IconMinus, IconWindowMaximize, IconXmark } from "../atoms/Icon";
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { TextInput } from "../atoms/TextInput";
 
 const appWindow = getCurrentWindow();
 
-export function ToolBar() {
+export function ToolBar(props: {
+    currentPage: "manager" | "settings";
+    onSettings: () => void;
+}) {
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.defaultPrevented) {
@@ -19,9 +22,13 @@ export function ToolBar() {
     }
 
     return (
-        <div onMouseDown={(e) => handleMouseDown(e)} className="flex flex-row justify-between items-center w-full bg-slate-900 pl-3 pr-3 fixed top-0 left-0 right-0 h-12">
-            <div className="w-24">
-                <IconLogo />
+        <div onMouseDown={(e) => handleMouseDown(e)} className="flex flex-row justify-between items-center w-full bg-slate-900 p-4">
+            <div className="w-24 flex flex-row items-center gap-2">
+                
+                <Button variant="outline" onClick={props.onSettings}>
+                    {props.currentPage === "manager" && <IconGear />}
+                    {props.currentPage === "settings" && <IconBack />}
+                </Button>
             </div>
             <CommandBar className="flex-grow" />
             <WindowControls

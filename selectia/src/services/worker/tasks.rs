@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use std::thread;
+
+use crate::{analyser::file_analyser::FileAnalyser, prelude::*};
 use chrono::{DateTime, Utc};
 use eyre::bail;
 use models::Task;
@@ -48,8 +50,8 @@ impl TryFrom<Task> for BackgroundTask {
     fn try_from(task: Task) -> Result<Self> {
         Ok(Self {
             id: task.id,
-            status: dbg!(TaskStatus::try_from(task.status.as_str())?),
-            payload: dbg!(serde_json::from_str(&task.payload)?),
+            status: TaskStatus::try_from(task.status.as_str())?,
+            payload: serde_json::from_str(&task.payload)?,
         })
     }
 }
@@ -65,7 +67,15 @@ impl BackgroundTask {
 impl FileAnalysisTask {
     pub async fn process(&self, database: Database) -> Result<()> {
         info!("Processing file analysis task: {:?}", self);
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        let file = database.get_file_from_metadata_id(self.metadata_id).await?;
+        let analyser = FileAnalyser::new(PathBuf::from(file.path));
+
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let _thread = thread::spawn(move || {
+            let result = analyser.analyse();
+            tx.send(result).unwrap();
+        });
+        let _result = rx.await?.unwrap();
         Ok(())
     }
 }

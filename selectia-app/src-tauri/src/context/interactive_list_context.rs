@@ -1,5 +1,5 @@
 use crate::{prelude::*, App};
-use selectia::analyser::EntriesAnalyser;
+use selectia::analyser::entries_analyser::EntriesAnalyser;
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
