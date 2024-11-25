@@ -40,3 +40,9 @@ SELECT
     tag.value as tag_value
 FROM metadata_tag
     LEFT JOIN tag on tag.id = metadata_tag.tag_id;
+
+CREATE TABLE task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    payload TEXT NOT NULL
+);

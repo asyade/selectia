@@ -104,6 +104,8 @@ pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<
         .clone()
         .load_directory(PathBuf::from(directory));
     fut.await.map_err(|e| e.to_string())?;
+    let handle = app.0.read().await.handle().clone();
+    handle.emit("entry_list_changed", ()).map_err(|e| e.to_string())?;
     Ok("ok".to_string())
 }
 

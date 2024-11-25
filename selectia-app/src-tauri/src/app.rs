@@ -1,5 +1,7 @@
 use interactive_list_context::InteractiveListContext;
-use tauri::{AppHandle, State};
+use state_machine::StateMachineEvent;
+use tauri::{AppHandle, Emitter, State};
+use worker::{tasks::{BackgroundTask, FileAnalysisTask, TaskPayload}, worker, Worker, WorkerTask};
 
 use crate::prelude::*;
 
@@ -7,6 +9,7 @@ use crate::prelude::*;
 pub struct App {
     pub(crate) handle: Option<AppHandle>,
     pub(crate) database: Database,
+    pub(crate) worker: Worker,
     pub(crate) state_machine: StateMachine,
     pub(crate) file_loader: FileLoader,
     pub(crate) interactive_list_context: ContextProvider<InteractiveListContext>,
@@ -16,10 +19,67 @@ pub struct AppState(pub(crate) Arc<RwLock<App>>);
 
 pub type AppArg<'a> = State<'a, AppState>;
 
+#[derive(Serialize, Clone)]
+pub struct FileIngestedEvent {
+    is_new: bool,
+    metadata_id: i64,
+}
 
 impl App {
+    pub async fn new() -> Self {
+        let database = Database::new(&PathBuf::from("/tmp/selectia.db"))
+            .await
+            .unwrap();
+        let state_machine = state_machine(database.clone());
+        let file_loader = file_loader(state_machine.clone());
+
+        let worker = worker(database.clone());
+
+        App {
+            handle: None,
+            database,
+            worker,
+            state_machine,
+            file_loader,
+            interactive_list_context: ContextProvider::new(),
+        }
+    }
+
+    pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
+        self.handle = Some(handle.clone());
+        let app_handle = self.clone();
+
+        self.state_machine
+            .register_channel(channel_iterator(move |msg| {
+                let app_handle = app_handle.clone();
+                async move {
+                    match msg {
+                        StateMachineEvent::FileIngested { file, new: true } => {
+                            if let Err(e) = app_handle.schedule_file_analysis(file.metadata_id).await {
+                                error!("Failed to schedule file analysis: {}", e);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }))
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn schedule_file_analysis(&self, metadata_id: i64) -> eyre::Result<()> {
+        let task = TaskPayload::FileAnalysis(FileAnalysisTask {
+            metadata_id,
+        });
+        self.worker.send(WorkerTask::Schedule(task)).await?;
+        Ok(())
+    }
+
     pub fn handle(&self) -> &AppHandle {
-        self.handle.as_ref().expect("handle() `App::handle` called before setup")
+        self.handle
+            .as_ref()
+            .expect("handle() `App::handle` called before setup")
     }
 
     pub async fn stop(self) -> eyre::Result<Self> {

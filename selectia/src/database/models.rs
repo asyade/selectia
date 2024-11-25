@@ -34,6 +34,13 @@ pub struct TagName {
     pub index_in_ui: i64,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct Task {
+    pub id: i64,
+    pub status: String,
+    pub payload: String,
+}
+
 impl TagName {
     pub const FILE_NAME_EMBEDDING_ID: i64 = 1;
     pub const DIRECTORY_ID: i64 = 2;
@@ -42,4 +49,5 @@ impl TagName {
     pub const ARTIST_ID: i64 = 5;
     pub const ALBUM_ID: i64 = 6;
     pub const GENRE_ID: i64 = 7;
+    pub const PLAYLIST_ID: i64 = 8;
 }

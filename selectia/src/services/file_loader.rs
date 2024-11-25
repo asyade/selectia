@@ -12,7 +12,7 @@ pub enum FileLoaderTask {
 pub type FileLoader = AddressableService<FileLoaderTask>;
 
 pub fn file_loader(state_machine: StateMachine) -> FileLoader {
-    AddressableService::new(move |receiver| file_loader_task(state_machine, receiver))
+    AddressableService::new(move |receiver, _| file_loader_task(state_machine, receiver))
 }
 
 async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Receiver<FileLoaderTask>) -> Result<()> {

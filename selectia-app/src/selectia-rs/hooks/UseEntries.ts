@@ -18,6 +18,17 @@ export function useEntries(context_id: string, initial_filter: FilterSelection):
         };
     }, []);
 
+
+    useEffect(() => {
+        const unlisten = listen("entry_list_changed", (_event) => {
+            get_interactive_list_context_entries(context_id, filter).then(setEntries);
+        });
+
+        return () => {
+            unlisten.then(unlisten => unlisten());
+        };
+    }, []);
+
     useEffect(() => {
         get_interactive_list_context_entries(context_id, filter).then(setEntries);
     }, [filter]);

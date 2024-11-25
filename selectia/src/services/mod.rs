@@ -3,10 +3,11 @@ use crate::prelude::*;
 pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
-
+pub mod worker;
 pub use addresable_service::*;
 pub use addresable_service_with_dispatcher::{AddressableServiceWithDispatcher, dispatcher::*};
 pub use threaded_service::*;
+use tokio::net::unix::pipe::Sender;
 
 pub trait Service<T> {
     fn blocking_send(&self, message: T) -> Result<()>;
@@ -68,10 +69,10 @@ mod addresable_service {
         pub fn new<Fut, F>(background_task: F) -> Self
         where
             Fut: Future<Output = Result<()>> + Send + 'static,
-            F: FnOnce(sync::mpsc::Receiver<T>) -> Fut,
+            F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>) -> Fut,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_handle = tokio::spawn(background_task(receiver));
+            let background_handle = tokio::spawn(background_task(receiver, sender.clone()));
             Self {
                 sender,
                 background_handle: Arc::new(Mutex::new(Some(background_handle))),
@@ -95,11 +96,11 @@ mod addresable_service_with_dispatcher {
         pub fn new<Fut, F>(background_task: F) -> Self
         where
             Fut: Future<Output = Result<()>> + Send + 'static,
-            F: FnOnce(sync::mpsc::Receiver<T>, EventDispatcher<R>) -> Fut,
+            F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>, EventDispatcher<R>) -> Fut,
         {
             let dispatcher = EventDispatcher::new();
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_handle = tokio::spawn(background_task(receiver, dispatcher.clone()));
+            let background_handle = tokio::spawn(background_task(receiver, sender.clone(), dispatcher.clone()));
             Self {
                 dispatcher,
                 service: AddressableService {
@@ -248,4 +249,22 @@ mod threaded_service {
             Ok(())
         }
     }
+}
+
+
+pub fn channel_iterator<
+    IT: CancelableTask,
+    F: FnMut(IT) -> Fut + Send + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
+>(
+    mut f: F,
+) -> tokio::sync::mpsc::Sender<IT> {
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(4096);
+    let sender_clone = sender.clone();
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            f(event).await;
+        }
+    });
+    sender_clone
 }

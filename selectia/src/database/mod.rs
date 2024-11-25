@@ -32,7 +32,7 @@ impl Database {
         Ok(Self { pool })
     }
 
-    pub async fn get_or_create_metadata(&self, hash: &str) -> Result<models::Metadata> {
+    pub async fn get_or_create_metadata(&self, hash: &str) -> Result<(models::Metadata, bool)> {
         let metadata = sqlx::query_as!(
             models::Metadata,
             "SELECT * FROM metadata WHERE hash = ?",
@@ -41,7 +41,7 @@ impl Database {
         .fetch_optional(&self.pool)
         .await?;
         match metadata {
-            Some(metadata) => Ok(metadata),
+            Some(metadata) => Ok((metadata, false)),
             None => {
                 info!("Creating metadata for {}", hash);
                 let metadata = sqlx::query_as!(
@@ -51,7 +51,7 @@ impl Database {
                 )
                 .fetch_one(&self.pool)
                 .await?;
-                Ok(metadata)
+                Ok((metadata, true))
             }
         }
     }
@@ -173,5 +173,40 @@ impl Database {
 
     pub async fn get_entry_by_metadata_id(&self, metadata_id: i64) -> Result<EntryView> {
         EntryView::get_one_by_metadata_id(metadata_id, &self.pool).await
+    }
+
+    pub async fn create_task(&self, payload: String) -> Result<i64> {
+        let task = sqlx::query_scalar!(
+            "INSERT INTO task (payload) VALUES (?) RETURNING id",
+            payload
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(task)
+    }
+
+    pub async fn get_task(&self, id: i64) -> Result<models::Task> {
+        let task = sqlx::query_as!(models::Task, "SELECT * FROM task WHERE id = ?", id)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(task)
+    }
+
+    pub async fn delete_task(&self, id: i64) -> Result<()> {
+        sqlx::query!("DELETE FROM task WHERE id = ?", id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn dequeue_task(&self) -> Result<Option<models::Task>> {
+        let task = sqlx::query_as!(models::Task, r#"
+            UPDATE task SET status = 'processing'
+            WHERE status = 'queued' AND id = (SELECT id FROM task WHERE status = 'queued' ORDER BY id ASC LIMIT 1)
+            RETURNING *
+        "#)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(task)
     }
 }

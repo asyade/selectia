@@ -1,4 +1,7 @@
 #![allow(unused)]
+use chrono::DateTime;
+use chrono::Utc;
+
 pub (crate) use eyre::Result;
 pub (crate) use thiserror::Error;
 pub (crate) use std::path::{Path, PathBuf};
@@ -22,3 +25,5 @@ pub use crate::services::embedding::{embedding, Embedding};
 pub use futures::{Stream, StreamExt, FutureExt, Future};
 
 pub use crate::models::{Tag, TagName};
+
+pub type Timestamp = DateTime<Utc>;
