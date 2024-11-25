@@ -14,12 +14,9 @@ export const ItemTypes = {
 }
 
 export function ManagerPage() {
-    // const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
     const [filter, setFilter] = useState<FilterSelection>({ directories: [], tags: {} });
 
     const [contextId, setContextId] = useState<string | null>(null);
-
-    const [filterSectionWidth, setFilterSectionWidth] = useState(100);
 
     const deleteContext = useCallback(() => {
         if (contextId) {

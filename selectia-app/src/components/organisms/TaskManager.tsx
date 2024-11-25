@@ -5,7 +5,3 @@ export function TaskManager() {
         </div>
     );
 }
-
-function TaskManagerItem() {
-    return <div className="bg-slate-700 text-white p-4 rounded-md">Analysing files</div>;
-}

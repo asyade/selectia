@@ -1,7 +1,7 @@
 
-import { Md10K, MdAdd, MdFolder, MdFolderOpen, MdOutlineFolder, MdOutlineFolderOpen } from "react-icons/md";
+import { MdAdd, MdFolder, MdFolderOpen, MdOutlineFolder, MdOutlineFolderOpen } from "react-icons/md";
 import { FaTasks, FaTrash } from "react-icons/fa";
-import { FaChevronDown, FaChevronUp, FaCirclePlus, FaCircleXmark, FaEye, FaEyeSlash, FaMinus, FaPen, FaSquare, FaWindowMaximize, FaXmark } from "react-icons/fa6";
+import { FaChevronDown, FaChevronUp, FaCircleXmark, FaEye, FaEyeSlash, FaMinus, FaPen, FaSquare, FaWindowMaximize, FaXmark } from "react-icons/fa6";
 
 interface IconProps {
     color?: string;
@@ -34,7 +34,7 @@ export function IconEdit(props: IconProps) {
 }
 
 export function IconLogo(_props: IconProps) {
-    return <img src="/src/assets/logo.png" alt="Selectia" className="w-6 h-6 mr-2" />;
+    return <img src="/src/assets/logo.png" alt="Selectia" className="w-6 h-6 mr-2"></img>;
 }
 
 

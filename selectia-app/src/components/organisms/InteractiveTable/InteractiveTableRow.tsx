@@ -102,7 +102,7 @@ function TableRowTagsSection(props: InteractiveTableRowProps) {
 function TagSectionTrashZone() {
     const [{ isOver }, drop] = useDrop(() => ({
         accept: [ ItemTypes.INTERACTIVE_TABLE_LABEL],
-        drop: (args, monitor) => {
+        drop: (_args, _monitor) => {
         },
         collect: monitor => ({
             isOver: !!monitor.isOver(),
