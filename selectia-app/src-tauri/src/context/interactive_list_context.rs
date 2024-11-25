@@ -5,9 +5,7 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 pub struct InteractiveListContext {
     pub app: App,
-    /// Cache to limit database queries
-    /// TODO: Use a more efficient cache and store multiple queries results ?
-    pub cache: Arc<RwLock<Cache>>,
+    cache: Arc<RwLock<Cache>>,
 }
 
 struct Cache {

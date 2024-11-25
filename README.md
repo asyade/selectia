@@ -43,7 +43,8 @@ Selectia can upscale audio files to improve the playback quality.
 
 ### Playlists
 
-## Development
+<details>
+    <summary>Developper guide</summary>
 
 ### Dependencies
 
@@ -54,6 +55,13 @@ Selectia can upscale audio files to improve the playback quality.
 
 ### Running the app in dev mode
 
+Run the app
+
+> Make sure to have the database file `selectia/selectia.db` present otherwise run `scripts/    regenerate_db.sh` to create it.
+
 ```bash
+export DATABASE_URL=sqlite://selectia/selectia.db
 yarn tauri dev
 ```
+
+</details>
