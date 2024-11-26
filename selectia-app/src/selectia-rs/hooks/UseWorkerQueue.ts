@@ -9,7 +9,8 @@ export function useWorkerQueueTasks(): [WorkerQueueTask[]] {
     useEffect(() => {
         const unlisten = listen("worker-queue-task-created", (event) => {
             const payload = event.payload as WorkerQueueTaskCreatedEvent;
-            get_worker_queue_task(payload.id).then(task => {
+            console.log(event);
+            get_worker_queue_task(payload.task.id).then(task => {
                 setTasks(prev => [...prev, task]);
             });
         });

@@ -52,8 +52,7 @@ export interface WorkerQueueTask {
 }
 
 export type WorkerQueueTaskCreatedEvent = {
-    id: number;
-    status: string;
+    task: WorkerQueueTask;
 }
 
 export type WorkerQueueTaskUpdatedEvent = {

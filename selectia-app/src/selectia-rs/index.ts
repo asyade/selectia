@@ -39,8 +39,8 @@ export async function get_worker_queue_tasks(): Promise<WorkerQueueTask[]> {
     return await invoke("get_worker_queue_tasks").then(x => x as WorkerQueueTask[]);
 }
 
-export async function get_worker_queue_task(task_id: number): Promise<WorkerQueueTask> {
-    return await invoke("get_worker_queue_task", { task_id }).then(x => x as WorkerQueueTask);
+export async function get_worker_queue_task(taskId: number): Promise<WorkerQueueTask> {
+    return await invoke("get_worker_queue_task", { taskId }).then(x => x as WorkerQueueTask);
 }
 
 export class EntryViewCursor {

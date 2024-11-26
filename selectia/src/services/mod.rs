@@ -1,13 +1,15 @@
 use crate::prelude::*;
+use tokio::net::unix::pipe::Sender;
+
+pub use addresable_service::*;
+pub use addresable_service_with_dispatcher::{AddressableServiceWithDispatcher, dispatcher::*};
+pub use threaded_service::*;
 
 pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
 pub mod worker;
-pub use addresable_service::*;
-pub use addresable_service_with_dispatcher::{AddressableServiceWithDispatcher, dispatcher::*};
-pub use threaded_service::*;
-use tokio::net::unix::pipe::Sender;
+pub mod audio_server;
 
 pub trait Service<T> {
     fn blocking_send(&self, message: T) -> Result<()>;
