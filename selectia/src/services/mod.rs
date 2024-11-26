@@ -1,15 +1,15 @@
 use crate::prelude::*;
-use tokio::net::unix::pipe::Sender;
 
 pub use addresable_service::*;
-pub use addresable_service_with_dispatcher::{AddressableServiceWithDispatcher, dispatcher::*};
+pub use addresable_service_with_dispatcher::{dispatcher::*, AddressableServiceWithDispatcher};
 pub use threaded_service::*;
 
+pub mod audio_server;
 pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
 pub mod worker;
-pub mod audio_server;
+pub mod audio_player;
 
 pub trait Service<T> {
     fn blocking_send(&self, message: T) -> Result<()>;
@@ -17,7 +17,7 @@ pub trait Service<T> {
     fn join(&self) -> impl Future<Output = Result<()>> + Send;
 }
 
-pub trait ChannelService<T> : Service<T> {
+pub trait ChannelService<T>: Service<T> {
     fn sender(&self) -> &sync::mpsc::Sender<T>;
 }
 
@@ -43,7 +43,9 @@ mod addresable_service {
         }
 
         fn blocking_send(&self, message: T) -> Result<()> {
-            self.sender.blocking_send(message).map_err(|_| eyre!("Failed to send message"))
+            self.sender
+                .blocking_send(message)
+                .map_err(|_| eyre!("Failed to send message"))
         }
 
         async fn join(&self) -> Result<()> {
@@ -102,7 +104,11 @@ mod addresable_service_with_dispatcher {
         {
             let dispatcher = EventDispatcher::new();
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_handle = tokio::spawn(background_task(receiver, sender.clone(), dispatcher.clone()));
+            let background_handle = tokio::spawn(background_task(
+                receiver,
+                sender.clone(),
+                dispatcher.clone(),
+            ));
             Self {
                 dispatcher,
                 service: AddressableService {
@@ -117,7 +123,9 @@ mod addresable_service_with_dispatcher {
         }
     }
 
-    impl<T: CancelableTask, R: CancelableTask> ChannelService<T> for AddressableServiceWithDispatcher<T, R> {
+    impl<T: CancelableTask, R: CancelableTask> ChannelService<T>
+        for AddressableServiceWithDispatcher<T, R>
+    {
         fn sender(&self) -> &sync::mpsc::Sender<T> {
             &self.service.sender
         }
@@ -131,7 +139,10 @@ mod addresable_service_with_dispatcher {
         }
 
         fn blocking_send(&self, message: T) -> Result<()> {
-            self.service.sender.blocking_send(message).map_err(|_| eyre!("Failed to send message"))
+            self.service
+                .sender
+                .blocking_send(message)
+                .map_err(|_| eyre!("Failed to send message"))
         }
 
         async fn join(&self) -> Result<()> {
@@ -146,14 +157,14 @@ mod addresable_service_with_dispatcher {
         }
     }
 
-    pub (super)mod dispatcher {
+    pub(super) mod dispatcher {
         use crate::prelude::*;
 
         #[derive(Clone)]
         pub struct EventDispatcher<T> {
             dispatcher: sync::mpsc::Sender<T>,
             listeners: Arc<RwLock<Vec<sync::mpsc::Sender<T>>>>,
-            pub (super)background_handle: Arc<Mutex<Option<task::JoinHandle<Result<()>>>>>,
+            pub(super) background_handle: Arc<Mutex<Option<task::JoinHandle<Result<()>>>>>,
         }
 
         impl<T: CancelableTask> EventDispatcher<T> {
@@ -236,11 +247,16 @@ mod threaded_service {
         }
 
         fn blocking_send(&self, message: T) -> Result<()> {
-            self.sender.blocking_send(message).map_err(|_| eyre!("Failed to send message"))
+            self.sender
+                .blocking_send(message)
+                .map_err(|_| eyre!("Failed to send message"))
         }
 
         async fn join(&self) -> Result<()> {
-            self.sender.send(T::cancel()).await.map_err(|_| eyre!("Failed to send cancel message"))?;
+            self.sender
+                .send(T::cancel())
+                .await
+                .map_err(|_| eyre!("Failed to send cancel message"))?;
             self.background_handle
                 .lock()
                 .await
@@ -252,7 +268,6 @@ mod threaded_service {
         }
     }
 }
-
 
 pub fn channel_iterator<
     IT: CancelableTask,

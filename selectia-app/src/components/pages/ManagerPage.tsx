@@ -7,6 +7,7 @@ import { interactive_list_create_context, interactive_list_delete_context } from
 
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
+import { Player } from "../organisms/Player/Player";
 
 export const ItemTypes = {
     INTERACTIVE_TABLE_LABEL: "interactive_table_label",
@@ -36,7 +37,7 @@ export function ManagerPage() {
     return (
         <DndProvider backend={HTML5Backend}>
 
-            <div className="flex flex-grow overflow-hidden w-full">
+            <div className="flex flex-grow overflow-auto w-full">
 
                 {/* <ActionBar className="flex-none  w-full" /> */}
                 <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
@@ -52,6 +53,7 @@ export function ManagerPage() {
                         />
                     )
                 }
+            <Player />
             </div>
         </DndProvider>
 

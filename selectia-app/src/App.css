@@ -16,6 +16,9 @@ input, textarea, select, button, .selectable {
 
 @layer scroll {
     * {
+        /* This prevent scrollbar from shifting the page content */
+        scrollbar-width: 0;
+        scrollbar-gutter: 0px;
 
         &::-webkit-scrollbar {
             width: 8px;
@@ -23,7 +26,7 @@ input, textarea, select, button, .selectable {
         }
 
         &::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 8px;
         }
 

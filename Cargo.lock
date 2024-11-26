@@ -3885,6 +3885,7 @@ dependencies = [
 name = "selectia-app"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "eyre",
  "futures",
  "lazy_static",

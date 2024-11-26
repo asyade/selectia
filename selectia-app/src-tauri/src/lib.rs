@@ -16,11 +16,11 @@ use crate::commands::*;
 use crate::prelude::*;
 
 mod app;
+mod dto;
 mod commands;
 mod context;
 mod error;
 mod prelude;
-mod scheduler;
 mod settings;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

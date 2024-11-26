@@ -1,8 +1,8 @@
 use symphonia::core::audio::SignalSpec;
 use symphonia::core::formats::{FormatReader, Track};
+use symphonia::core::io::MediaSource;
 
 use crate::prelude::*;
-use std::path::PathBuf;
 use std::fs::File;
 
 pub struct AudioFile {
@@ -10,12 +10,10 @@ pub struct AudioFile {
     samples: Option<Vec<f32>>,
 }
 
-
 impl AudioFile {
 
-    pub fn open<T: AsRef<Path>>(path: T) -> AudioFileResult<Self> {
-        let file = Box::new(File::open(&path)?);
-        let mss = MediaSourceStream::new(file, Default::default());
+    pub fn from_source(source: Box<dyn MediaSource>, path: impl AsRef<Path>) -> AudioFileResult<Self> {
+        let mss = MediaSourceStream::new(source, Default::default());
         // Create a hint to help the format registry guess what format reader is appropriate. In this
         // example we'll leave it empty.
         let mut hint = Hint::new();
@@ -28,8 +26,8 @@ impl AudioFile {
         let metadata_opts: MetadataOptions = Default::default();
 
         // Probe the media source stream for a format.
-        let probed = symphonia::default::get_probe()
-            .format(&hint, mss, &format_opts, &metadata_opts)?;
+        let probed =
+            symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts)?;
 
         // Get the format reader yielded by the probe operation.
         let format = probed.format;
@@ -38,6 +36,14 @@ impl AudioFile {
             format: format,
             samples: None,
         })
+    }
+
+    /// Open an audio file from a path.
+    /// 
+    /// ** Note ** Do not use this function in async contexts, use `from_source` instead.
+    pub fn open<T: AsRef<Path>>(path: T) -> AudioFileResult<Self> {
+        let file = Box::new(File::open(&path)?);
+        Self::from_source(file, path)
     }
 
     pub fn decode(&mut self) -> AudioFileResult<()> {
@@ -107,7 +113,4 @@ impl AudioFile {
         self.samples = Some(decoded_samples);
         Ok(())
     }
-
 }
-
-

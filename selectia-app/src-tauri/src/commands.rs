@@ -3,7 +3,7 @@ use selectia::database::views::TagView;
 use tauri::Emitter;
 use worker::tasks::TaskStatus;
 
-use crate::{app::WorkerQueueTask, prelude::*};
+use crate::{dto::to_frontend::*, prelude::*};
 
 #[tauri::command]
 #[instrument(skip(app))]

@@ -231,9 +231,13 @@ impl Database {
     }
 
     pub async fn get_file_from_metadata_id(&self, metadata_id: i64) -> Result<models::File> {
-        let file = sqlx::query_as!(models::File, "SELECT * FROM file WHERE metadata_id = ?", metadata_id)
-            .fetch_one(&self.pool)
-            .await?;
+        let file = sqlx::query_as!(
+            models::File,
+            "SELECT * FROM file WHERE metadata_id = ?",
+            metadata_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
         Ok(file)
     }
 }

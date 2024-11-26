@@ -8,6 +8,7 @@ use worker::{
 };
 
 use crate::{prelude::*, settings::Settings};
+use crate::dto::to_frontend::*;
 
 #[derive(Clone)]
 pub struct App {
@@ -23,22 +24,6 @@ pub struct AppState(pub(crate) Arc<RwLock<App>>);
 
 pub type AppArg<'a> = State<'a, AppState>;
 
-#[derive(Serialize, Clone)]
-pub struct WorkerQueueTaskCreatedEvent {
-    task: WorkerQueueTask,
-}
-
-#[derive(Serialize, Clone)]
-pub struct WorkerQueueTaskUpdatedEvent {
-    id: i64,
-    task: Option<WorkerQueueTask>,
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct WorkerQueueTask {
-    pub id: i64,
-    pub status: TaskStatus,
-}
 
 impl App {
     pub async fn new() -> Self {

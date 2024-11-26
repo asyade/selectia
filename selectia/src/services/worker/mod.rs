@@ -2,18 +2,15 @@ use models::Task;
 use tasks::{BackgroundTask, TaskPayload, TaskStatus};
 
 use crate::prelude::*;
-use crate::services::{CancelableTask, AddressableService};
+use crate::services::{AddressableService, CancelableTask};
 
 pub mod tasks;
 
-const DEFAULT_WORKER_POOL_SIZE: usize = 4;
+const DEFAULT_WORKER_POOL_SIZE: usize = 1;
 
 #[derive(Clone, Debug)]
 pub enum WorkerTask {
-    TaskDone {
-        id: i64,
-        success: bool,
-    },
+    TaskDone { id: i64, success: bool },
     Poll,
     Schedule(TaskPayload),
     Exit,
@@ -37,16 +34,26 @@ pub enum WorkerEvent {
 pub type Worker = AddressableServiceWithDispatcher<WorkerTask, WorkerEvent>;
 
 pub fn worker(database: Database) -> Worker {
-    AddressableServiceWithDispatcher::new(move |receiver, sender, dispatcher| worker_task(database, receiver, sender, dispatcher))
+    AddressableServiceWithDispatcher::new(move |receiver, sender, dispatcher| {
+        worker_task(database, receiver, sender, dispatcher)
+    })
 }
 
-async fn worker_task(database: Database, mut receiver: sync::mpsc::Receiver<WorkerTask>, mut sender: sync::mpsc::Sender<WorkerTask>, dispatcher: EventDispatcher<WorkerEvent>) -> Result<()> {
+async fn worker_task(
+    database: Database,
+    mut receiver: sync::mpsc::Receiver<WorkerTask>,
+    mut sender: sync::mpsc::Sender<WorkerTask>,
+    dispatcher: EventDispatcher<WorkerEvent>,
+) -> Result<()> {
     let mut pool = WorkerPool::new(DEFAULT_WORKER_POOL_SIZE, sender.clone(), dispatcher.clone());
-    
+
     // Sanitize task status to ensure that no task is in processing status due to a crash
     let sanitized = database.sanitize_task_status().await?;
     if sanitized > 0 {
-        warn!("{} task(s) were in processing status and have been reset to queued", sanitized);
+        warn!(
+            "{} task(s) were in processing status and have been reset to queued",
+            sanitized
+        );
     }
 
     // Send a poll message to the dispatcher to wake up the main loop and check if there is a task store
@@ -63,18 +70,27 @@ async fn worker_task(database: Database, mut receiver: sync::mpsc::Receiver<Work
                     error!("Task failed: {}", id);
                 }
                 database.delete_task(id).await?;
-                dispatcher.dispatch(WorkerEvent::QueueTaskUpdated { id, status: TaskStatus::Done, removed: true }).await?;
+                dispatcher
+                    .dispatch(WorkerEvent::QueueTaskUpdated {
+                        id,
+                        status: TaskStatus::Done,
+                        removed: true,
+                    })
+                    .await?;
             }
-            WorkerTask::Schedule(task) => {
-                match database.enqueue_task(task).await {
-                    Ok(id) => {
-                        dispatcher.dispatch(WorkerEvent::QueueTaskCreated { id, status: TaskStatus::Queued }).await?;
-                    }
-                    Err(e) => {
-                        error!("Error enqueuing task: {:?}", e);
-                    }
+            WorkerTask::Schedule(task) => match database.enqueue_task(task).await {
+                Ok(id) => {
+                    dispatcher
+                        .dispatch(WorkerEvent::QueueTaskCreated {
+                            id,
+                            status: TaskStatus::Queued,
+                        })
+                        .await?;
                 }
-            }
+                Err(e) => {
+                    error!("Error enqueuing task: {:?}", e);
+                }
+            },
             WorkerTask::Exit => {
                 pool.join(true).await?;
                 break;
@@ -84,7 +100,13 @@ async fn worker_task(database: Database, mut receiver: sync::mpsc::Receiver<Work
 
         while pool.has_empty_slots() {
             if let Some(task) = database.dequeue_task().await? {
-                dispatcher.dispatch(WorkerEvent::QueueTaskUpdated { id: task.id, status: TaskStatus::Processing, removed: false }).await?;
+                dispatcher
+                    .dispatch(WorkerEvent::QueueTaskUpdated {
+                        id: task.id,
+                        status: TaskStatus::Processing,
+                        removed: false,
+                    })
+                    .await?;
                 if let Err(e) = pool.spawn(task, database.clone()).await {
                     error!("Error spawning task: {:?}", e);
                 }
@@ -97,7 +119,6 @@ async fn worker_task(database: Database, mut receiver: sync::mpsc::Receiver<Work
     Ok(())
 }
 
-
 struct WorkerPool {
     max_size: usize,
     notify: sync::mpsc::Sender<WorkerTask>,
@@ -106,7 +127,11 @@ struct WorkerPool {
 }
 
 impl WorkerPool {
-    pub fn new(nbr_worker: usize, notify: sync::mpsc::Sender<WorkerTask>, dispatcher: EventDispatcher<WorkerEvent>) -> Self {
+    pub fn new(
+        nbr_worker: usize,
+        notify: sync::mpsc::Sender<WorkerTask>,
+        dispatcher: EventDispatcher<WorkerEvent>,
+    ) -> Self {
         Self {
             max_size: nbr_worker,
             notify,
@@ -157,13 +182,27 @@ impl WorkerPool {
     }
 }
 
-async fn process_task(database: Database, task: BackgroundTask, notify: sync::mpsc::Sender<WorkerTask>) -> Result<()> {
+async fn process_task(
+    database: Database,
+    task: BackgroundTask,
+    notify: sync::mpsc::Sender<WorkerTask>,
+) -> Result<()> {
     info!("Processing task: {:?}", task);
     if let Err(e) = task.process(database).await {
         error!("Error processing task: {:?}", e);
-        notify.send(WorkerTask::TaskDone { id: task.id, success: false }).await?;
+        notify
+            .send(WorkerTask::TaskDone {
+                id: task.id,
+                success: false,
+            })
+            .await?;
     } else {
-        notify.send(WorkerTask::TaskDone { id: task.id, success: true }).await?;
+        notify
+            .send(WorkerTask::TaskDone {
+                id: task.id,
+                success: true,
+            })
+            .await?;
     }
     Ok(())
 }
