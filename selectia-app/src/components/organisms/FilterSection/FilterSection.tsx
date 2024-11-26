@@ -63,7 +63,7 @@ export function FilterSection(props: {
         </div>
     );
 
-    return <div className={`${props.className} bg-slate-900 p-2 overflow-scroll`}>
+    return <div className={`${props.className} bg-slate-900 p-2 overflow-auto`}>
         <ExpandableRegion expanded={true} header={directoryHeader}>
             <FilterSubSectionDirectories />
         </ExpandableRegion>

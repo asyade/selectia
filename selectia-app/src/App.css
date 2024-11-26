@@ -2,11 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-
 * {
     user-select: none;
 }
 
+body {
+    overflow: hidden;
+}
+
 input, textarea, select, button, .selectable {
     user-select: auto;
+}
+
+@layer scroll {
+    * {
+
+        &::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-button {
+            display: none;
+        }
+    }
 }

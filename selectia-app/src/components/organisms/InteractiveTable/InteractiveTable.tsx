@@ -28,7 +28,7 @@ export function InteractiveTable(props: InteractiveTableProps) {
     )), [entries]);
 
     return (
-        <div className={`${props.className} bg-slate-800 overflow-scroll`}>
+        <div className={`${props.className} bg-slate-800 overflow-auto`}>
             <Table>
                 {table_components}
             </Table>

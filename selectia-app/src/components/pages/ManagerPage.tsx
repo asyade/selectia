@@ -36,7 +36,7 @@ export function ManagerPage() {
     return (
         <DndProvider backend={HTML5Backend}>
 
-            <div className="flex flex-grow overflow-scroll w-full">
+            <div className="flex flex-grow overflow-hidden w-full">
 
                 {/* <ActionBar className="flex-none  w-full" /> */}
                 <FilterSection className="flex-auto w-1/4" onFilterChange={(filter) => {
