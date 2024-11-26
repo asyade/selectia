@@ -9,22 +9,23 @@ use selectia::database::views::{
     entry_view::{EntryView, EntryViewFilter},
     TagView,
 };
+use settings::Settings;
 use tauri::{Manager, State};
 
+use crate::commands::*;
 use crate::prelude::*;
 
-mod scheduler;
+mod app;
 mod commands;
 mod context;
 mod error;
 mod prelude;
-mod app;
-use commands::*;
+mod scheduler;
+mod settings;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
-
     let app_state = AppState(Arc::new(RwLock::new(App::new().await)));
 
     tauri::Builder::default()

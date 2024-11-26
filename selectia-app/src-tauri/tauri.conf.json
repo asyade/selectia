@@ -16,7 +16,8 @@
         "title": "selectia-app",
         "width": 800,
         "height": 600,
-        "shadow":true
+        "shadow": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {

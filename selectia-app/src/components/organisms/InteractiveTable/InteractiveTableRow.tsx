@@ -71,7 +71,7 @@ function TableRowTagsSection(props: InteractiveTableRowProps) {
 
     const static_tag_components = useMemo(() => {
         if (showTrash) {
-            return [<TagSectionTrashZone />]
+            return [<TagSectionTrashZone key="tag_section_trash_zone" />]
         } else if (tagCreation) {
             return [<IndeterminateTagComponent tagName={tagCreation} entry={props.entry} key={`indeterminate_${tagCreation.id}`} onBlur={() => setTagCreation(null)} />]
         } else {

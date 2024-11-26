@@ -2,9 +2,12 @@ use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
 use tauri::{AppHandle, Emitter, State};
-use worker::{tasks::{BackgroundTask, FileAnalysisTask, TaskPayload, TaskStatus}, worker, Worker, WorkerEvent, WorkerTask};
+use worker::{
+    tasks::{BackgroundTask, FileAnalysisTask, TaskPayload, TaskStatus},
+    worker, Worker, WorkerEvent, WorkerTask,
+};
 
-use crate::prelude::*;
+use crate::{prelude::*, settings::Settings};
 
 #[derive(Clone)]
 pub struct App {
@@ -31,18 +34,16 @@ pub struct WorkerQueueTaskUpdatedEvent {
     task: Option<WorkerQueueTask>,
 }
 
-#[derive(Deserialize,Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct WorkerQueueTask {
     pub id: i64,
     pub status: TaskStatus,
 }
 
-
 impl App {
     pub async fn new() -> Self {
-        let database = Database::new(&PathBuf::from("/tmp/selectia.db"))
-            .await
-            .unwrap();
+        let settings = Settings::load().expect("Failed to load settings");
+        let database = Database::new(&settings.database_path).await.unwrap();
         let state_machine = state_machine(database.clone());
         let file_loader = file_loader(state_machine.clone());
 
@@ -61,31 +62,38 @@ impl App {
     pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
         self.handle = Some(handle.clone());
 
-        self.worker.register_channel(channel_iterator(move |msg| {
-            let handle = handle.clone();
-            async move {
-                match msg {
-                    WorkerEvent::QueueTaskCreated { id, status } => {
-                        let task = WorkerQueueTask { id, status };
-                        let _ = handle.emit("worker-queue-task-created", WorkerQueueTaskCreatedEvent{
-                            task
-                        });
-                    },
-                    WorkerEvent::QueueTaskUpdated { id, status, removed } => {
-                        let task = if removed {
-                            None
-                        } else {
-                            Some(WorkerQueueTask {
-                                id,
-                                status,
-                            })
-                        };
-                        let _ = handle.emit("worker-queue-task-updated", WorkerQueueTaskUpdatedEvent { id, task  });
+        self.worker
+            .register_channel(channel_iterator(move |msg| {
+                let handle = handle.clone();
+                async move {
+                    match msg {
+                        WorkerEvent::QueueTaskCreated { id, status } => {
+                            let task = WorkerQueueTask { id, status };
+                            let _ = handle.emit(
+                                "worker-queue-task-created",
+                                WorkerQueueTaskCreatedEvent { task },
+                            );
+                        }
+                        WorkerEvent::QueueTaskUpdated {
+                            id,
+                            status,
+                            removed,
+                        } => {
+                            let task = if removed {
+                                None
+                            } else {
+                                Some(WorkerQueueTask { id, status })
+                            };
+                            let _ = handle.emit(
+                                "worker-queue-task-updated",
+                                WorkerQueueTaskUpdatedEvent { id, task },
+                            );
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
-            }
-        })).await;
+            }))
+            .await;
 
         let app_handle = self.clone();
         self.state_machine
@@ -94,7 +102,9 @@ impl App {
                 async move {
                     match msg {
                         StateMachineEvent::FileIngested { file, new: true } => {
-                            if let Err(e) = app_handle.schedule_file_analysis(file.metadata_id).await {
+                            if let Err(e) =
+                                app_handle.schedule_file_analysis(file.metadata_id).await
+                            {
                                 error!("Failed to schedule file analysis: {}", e);
                             }
                         }
@@ -108,9 +118,7 @@ impl App {
     }
 
     pub async fn schedule_file_analysis(&self, metadata_id: i64) -> eyre::Result<()> {
-        let task = TaskPayload::FileAnalysis(FileAnalysisTask {
-            metadata_id,
-        });
+        let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });
         self.worker.send(WorkerTask::Schedule(task)).await?;
         Ok(())
     }
