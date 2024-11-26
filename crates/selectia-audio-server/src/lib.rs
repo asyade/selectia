@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 mod backend;
 mod error;
 mod prelude;

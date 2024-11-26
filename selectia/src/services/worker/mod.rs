@@ -1,8 +1,8 @@
-use models::Task;
+use models::Task as TaskModel;
 use tasks::{BackgroundTask, TaskPayload, TaskStatus};
 
 use crate::prelude::*;
-use crate::services::{AddressableService, CancelableTask};
+use crate::services::{AddressableService, Task};
 
 pub mod tasks;
 
@@ -13,7 +13,6 @@ pub enum WorkerTask {
     TaskDone { id: i64, success: bool },
     Poll,
     Schedule(TaskPayload),
-    Exit,
 }
 
 #[derive(Clone, Debug)]
@@ -27,8 +26,6 @@ pub enum WorkerEvent {
         status: TaskStatus,
         removed: bool,
     },
-    /// TODO: refactor event dispatcher to remove this
-    Exit,
 }
 
 pub type Worker = AddressableServiceWithDispatcher<WorkerTask, WorkerEvent>;
@@ -42,7 +39,7 @@ pub fn worker(database: Database) -> Worker {
 async fn worker_task(
     database: Database,
     mut receiver: sync::mpsc::Receiver<WorkerTask>,
-    mut sender: sync::mpsc::Sender<WorkerTask>,
+    sender: sync::mpsc::Sender<WorkerTask>,
     dispatcher: EventDispatcher<WorkerEvent>,
 ) -> Result<()> {
     let mut pool = WorkerPool::new(DEFAULT_WORKER_POOL_SIZE, sender.clone(), dispatcher.clone());
@@ -91,10 +88,6 @@ async fn worker_task(
                     error!("Error enqueuing task: {:?}", e);
                 }
             },
-            WorkerTask::Exit => {
-                pool.join(true).await?;
-                break;
-            }
             WorkerTask::Poll => {}
         }
 
@@ -119,6 +112,7 @@ async fn worker_task(
     Ok(())
 }
 
+#[allow(dead_code)]
 struct WorkerPool {
     max_size: usize,
     notify: sync::mpsc::Sender<WorkerTask>,
@@ -154,7 +148,7 @@ impl WorkerPool {
         };
     }
 
-    pub async fn spawn(&mut self, task: Task, database: Database) -> Result<()> {
+    pub async fn spawn(&mut self, task: TaskModel, database: Database) -> Result<()> {
         info!("Worker spawning task: {:?}", task);
         let task = BackgroundTask::try_from(task)?;
         let handle = tokio::spawn(process_task(database, task.clone(), self.notify.clone()));
@@ -164,21 +158,6 @@ impl WorkerPool {
 
     pub fn has_empty_slots(&self) -> bool {
         self.background_handles.len() < self.max_size
-    }
-
-    /// TODO : better error handling
-    pub async fn join(self, cancel: bool) -> Result<()> {
-        if cancel {
-            for (_, handle) in self.background_handles {
-                handle.0.abort();
-                let _ = handle.0.await;
-            }
-        } else {
-            for (_, handle) in self.background_handles {
-                let _ = handle.0.await;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -207,16 +186,10 @@ async fn process_task(
     Ok(())
 }
 
-impl CancelableTask for WorkerTask {
-    fn cancel() -> Self {
-        Self::Exit
-    }
+impl Task for WorkerTask {
 }
 
-impl CancelableTask for WorkerEvent {
-    fn cancel() -> Self {
-        Self::Exit
-    }
+impl Task for WorkerEvent {
 }
 
 pub trait WorkerDatabaseExt {

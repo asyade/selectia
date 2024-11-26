@@ -11,12 +11,10 @@ pub type AudioPlayerService = AddressableServiceWithDispatcher<AudioPlayerTask, 
 pub enum AudioPlayerTask {
     CreateDeck {
     },
-    Exit,
 }
 
 #[derive(Clone)]
 pub enum AudioPlayerEvent {
-    Exit,
 }
 
 pub fn audio_player() -> AudioPlayerService {
@@ -26,9 +24,6 @@ pub fn audio_player() -> AudioPlayerService {
     
         while let Some(task) = receiver.blocking_recv() {
             match task {
-                AudioPlayerTask::Exit => {
-                    break;
-                },
                 AudioPlayerTask::CreateDeck { } => {
                     let id = next_deck_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     decks.write().await.insert(id, PlayerDeck::new());
@@ -53,15 +48,9 @@ pub fn audio_player() -> AudioPlayerService {
 // }
 
 
-impl CancelableTask for AudioPlayerTask {
-    fn cancel() -> Self {
-        Self::Exit
-    }
+impl Task for AudioPlayerTask {
 }
 
-impl CancelableTask for AudioPlayerEvent {
-    fn cancel() -> Self {
-        Self::Exit
-    }
+impl Task for AudioPlayerEvent {
 }
 

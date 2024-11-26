@@ -114,17 +114,6 @@ impl App {
             .expect("handle() `App::handle` called before setup")
     }
 
-    pub async fn stop(self) -> eyre::Result<Self> {
-        self.file_loader.join().await?;
-        let futures: Vec<Pin<Box<dyn Future<Output = eyre::Result<()>>>>> = vec![
-            // Box::pin(self.embedding.join()),
-            // Box::pin(self.file_loader.join()),
-            Box::pin(self.state_machine.join()),
-        ];
-        futures::future::join_all(futures).await;
-        Ok(self)
-    }
-
     pub async fn with_embedding(self) -> eyre::Result<Self> {
         let embedding = embedding(self.state_machine.clone());
         self.state_machine

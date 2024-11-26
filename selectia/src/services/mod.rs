@@ -14,27 +14,30 @@ pub mod audio_player;
 pub trait Service<T> {
     fn blocking_send(&self, message: T) -> Result<()>;
     fn send(&self, message: T) -> impl Future<Output = Result<()>> + Send;
-    fn join(&self) -> impl Future<Output = Result<()>> + Send;
 }
 
 pub trait ChannelService<T>: Service<T> {
     fn sender(&self) -> &sync::mpsc::Sender<T>;
 }
 
-pub trait CancelableTask: Sized + Send + Clone + 'static {
-    fn cancel() -> Self;
+pub trait Task: Sized + Send + 'static {
 }
+
+pub trait Event: Task + Clone + 'static {
+}
+
+impl<T: Task + Clone + 'static> Event for T {}
 
 mod addresable_service {
     use crate::prelude::*;
 
     #[derive(Clone)]
+    #[allow(unused_variables)]
     pub struct AddressableService<T> {
         pub(super) sender: sync::mpsc::Sender<T>,
-        pub(super) background_handle: Arc<Mutex<Option<task::JoinHandle<Result<()>>>>>,
     }
 
-    impl<T: CancelableTask> Service<T> for AddressableService<T> {
+    impl<T: Task> Service<T> for AddressableService<T> {
         async fn send(&self, message: T) -> Result<()> {
             self.sender
                 .send(message)
@@ -47,46 +50,31 @@ mod addresable_service {
                 .blocking_send(message)
                 .map_err(|_| eyre!("Failed to send message"))
         }
-
-        async fn join(&self) -> Result<()> {
-            self.sender
-                .send(T::cancel())
-                .await
-                .map_err(|_| eyre!("Failed to send cancel message"))?;
-            self.background_handle
-                .lock()
-                .await
-                .take()
-                .unwrap()
-                .await??;
-            Ok(())
-        }
     }
 
-    impl<T: CancelableTask> ChannelService<T> for AddressableService<T> {
+    impl<T: Task> ChannelService<T> for AddressableService<T> {
         fn sender(&self) -> &sync::mpsc::Sender<T> {
             &self.sender
         }
     }
 
-    impl<T: CancelableTask> AddressableService<T> {
+    impl<T: Task> AddressableService<T> {
         pub fn new<Fut, F>(background_task: F) -> Self
         where
             Fut: Future<Output = Result<()>> + Send + 'static,
             F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>) -> Fut,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_handle = tokio::spawn(background_task(receiver, sender.clone()));
+            let _background_handle = tokio::spawn(background_task(receiver, sender.clone()));
             Self {
                 sender,
-                background_handle: Arc::new(Mutex::new(Some(background_handle))),
             }
         }
     }
 }
 
 mod addresable_service_with_dispatcher {
-    use super::addresable_service::AddressableService;
+    use super::{addresable_service::AddressableService, Event};
     use crate::prelude::*;
     use dispatcher::EventDispatcher;
 
@@ -96,7 +84,7 @@ mod addresable_service_with_dispatcher {
         dispatcher: EventDispatcher<R>,
     }
 
-    impl<T: CancelableTask, R: CancelableTask> AddressableServiceWithDispatcher<T, R> {
+    impl<T: Task, R: Event> AddressableServiceWithDispatcher<T, R> {
         pub fn new<Fut, F>(background_task: F) -> Self
         where
             Fut: Future<Output = Result<()>> + Send + 'static,
@@ -104,7 +92,7 @@ mod addresable_service_with_dispatcher {
         {
             let dispatcher = EventDispatcher::new();
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_handle = tokio::spawn(background_task(
+            let _background_handle = tokio::spawn(background_task(
                 receiver,
                 sender.clone(),
                 dispatcher.clone(),
@@ -113,7 +101,6 @@ mod addresable_service_with_dispatcher {
                 dispatcher,
                 service: AddressableService {
                     sender,
-                    background_handle: Arc::new(Mutex::new(Some(background_handle))),
                 },
             }
         }
@@ -123,7 +110,7 @@ mod addresable_service_with_dispatcher {
         }
     }
 
-    impl<T: CancelableTask, R: CancelableTask> ChannelService<T>
+    impl<T: Task, R: Event> ChannelService<T>
         for AddressableServiceWithDispatcher<T, R>
     {
         fn sender(&self) -> &sync::mpsc::Sender<T> {
@@ -131,7 +118,7 @@ mod addresable_service_with_dispatcher {
         }
     }
 
-    impl<T: CancelableTask + Send + 'static, R: CancelableTask> Service<T>
+    impl<T: Task, R: Event> Service<T>
         for AddressableServiceWithDispatcher<T, R>
     {
         async fn send(&self, message: T) -> Result<()> {
@@ -144,38 +131,25 @@ mod addresable_service_with_dispatcher {
                 .blocking_send(message)
                 .map_err(|_| eyre!("Failed to send message"))
         }
-
-        async fn join(&self) -> Result<()> {
-            self.dispatcher
-                .background_handle
-                .lock()
-                .await
-                .take()
-                .unwrap()
-                .await??;
-            self.service.join().await
-        }
     }
 
     pub(super) mod dispatcher {
-        use crate::prelude::*;
+        use crate::{prelude::*, services::Event};
 
         #[derive(Clone)]
         pub struct EventDispatcher<T> {
             dispatcher: sync::mpsc::Sender<T>,
             listeners: Arc<RwLock<Vec<sync::mpsc::Sender<T>>>>,
-            pub(super) background_handle: Arc<Mutex<Option<task::JoinHandle<Result<()>>>>>,
         }
 
-        impl<T: CancelableTask> EventDispatcher<T> {
+        impl<T: Event> EventDispatcher<T> {
             pub fn new() -> Self {
                 let (dispatcher, proxy_recv) = sync::mpsc::channel(4096);
                 let listeners = Arc::new(RwLock::new(vec![]));
-                let background_handle = tokio::spawn(Self::proxy(proxy_recv, listeners.clone()));
+                let _background_handle = tokio::spawn(Self::proxy(proxy_recv, listeners.clone()));
                 Self {
                     dispatcher,
                     listeners,
-                    background_handle: Arc::new(Mutex::new(Some(background_handle))),
                 }
             }
 
@@ -215,30 +189,28 @@ mod threaded_service {
     #[derive(Clone)]
     pub struct ThreadedService<T> {
         pub(super) sender: sync::mpsc::Sender<T>,
-        pub(super) background_handle: Arc<Mutex<Option<std::thread::JoinHandle<Result<()>>>>>,
     }
 
-    impl<T: CancelableTask> ThreadedService<T> {
+    impl<T: Task> ThreadedService<T> {
         pub fn new<F>(background_task: F) -> Self
         where
             F: FnOnce(sync::mpsc::Receiver<T>) -> Result<()> + Send + 'static,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_handle = std::thread::spawn(move || background_task(receiver));
+            let _background_handle = std::thread::spawn(move || background_task(receiver));
             Self {
                 sender,
-                background_handle: Arc::new(Mutex::new(Some(background_handle))),
             }
         }
     }
 
-    impl<T: CancelableTask> ChannelService<T> for ThreadedService<T> {
+    impl<T: Task> ChannelService<T> for ThreadedService<T> {
         fn sender(&self) -> &sync::mpsc::Sender<T> {
             &self.sender
         }
     }
 
-    impl<T: CancelableTask> Service<T> for ThreadedService<T> {
+    impl<T: Task> Service<T> for ThreadedService<T> {
         async fn send(&self, message: T) -> Result<()> {
             self.sender
                 .send(message)
@@ -251,26 +223,11 @@ mod threaded_service {
                 .blocking_send(message)
                 .map_err(|_| eyre!("Failed to send message"))
         }
-
-        async fn join(&self) -> Result<()> {
-            self.sender
-                .send(T::cancel())
-                .await
-                .map_err(|_| eyre!("Failed to send cancel message"))?;
-            self.background_handle
-                .lock()
-                .await
-                .take()
-                .unwrap()
-                .join()
-                .map_err(|_| eyre!("Failed to join background thread"))??;
-            Ok(())
-        }
     }
 }
 
 pub fn channel_iterator<
-    IT: CancelableTask,
+    IT: Task,
     F: FnMut(IT) -> Fut + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
 >(

@@ -1,12 +1,11 @@
 use crate::prelude::*;
-use crate::services::{CancelableTask, AddressableService};
+use crate::services::{Task, AddressableService};
 
 const MAX_CONCURRENT_LOADS: usize = 4;
 
 #[derive(Clone, Debug)]
 pub enum FileLoaderTask {
     LoadFile(PathBuf),
-    Exit,
 }
 
 pub type FileLoader = AddressableService<FileLoaderTask>;
@@ -34,9 +33,6 @@ async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Rec
                 }
                 true
             }
-            FileLoaderTask::Exit => {
-                false
-            }
         }
     }).buffer_unordered(MAX_CONCURRENT_LOADS);
 
@@ -49,10 +45,7 @@ async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Rec
     Ok(())
 }
 
-impl CancelableTask for FileLoaderTask {
-    fn cancel() -> Self {
-        Self::Exit
-    }
+impl Task for FileLoaderTask {
 }
 
 mod loader {

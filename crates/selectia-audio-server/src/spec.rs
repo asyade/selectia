@@ -15,6 +15,7 @@ pub struct DeviceSpec {
     pub device: cpal::Device,
 }
 
+#[allow(dead_code)]
 pub struct InputDeviceSpec {
     pub spec: DeviceSpec,
     default_config: cpal::SupportedStreamConfig,

@@ -10,13 +10,9 @@ pub enum StateMachineEvent {
         file: File,
         new: bool,
     },
-    Exit,
 }
 
-impl CancelableTask for StateMachineEvent {
-    fn cancel() -> Self {
-        Self::Exit
-    }
+impl Task for StateMachineEvent {
 }
 
 #[allow(dead_code)]
@@ -36,7 +32,6 @@ pub enum TaskOwner {
 pub enum StateMachineTaskPayload {
     IngestFile(IngestFileTask),
     SetTag(SetTagTask),
-    Exit,
 }
 
 #[derive(Clone)]
@@ -135,20 +130,10 @@ async fn handle_task(
             info!(tag_id, "Tag set");
             Ok(true)
         }
-        StateMachineTaskPayload::Exit => {
-            dispatcher.dispatch(StateMachineEvent::Exit).await?;
-            Ok(false)
-        }
     }
 }
 
-impl CancelableTask for StateMachineTask {
-    fn cancel() -> Self {
-        Self {
-            owner: TaskOwner::System,
-            payload: StateMachineTaskPayload::Exit,
-        }
-    }
+impl Task for StateMachineTask {
 }
 
 impl StateMachineTask {
