@@ -1,0 +1,9 @@
+[package]
+name = "selectia-audio-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "2"
+tracing = "0.1"
+cpal = "0.15"

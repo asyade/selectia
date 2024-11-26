@@ -1,4 +1,4 @@
 [workspace]
 resolver = "2"
 
-members = ["selectia-app/src-tauri", "selectia"]
+members = ["selectia-app/src-tauri", "selectia", "crates/selectia-audio-file", "crates/selectia-audio-server"]

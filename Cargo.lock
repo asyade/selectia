@@ -3865,11 +3865,12 @@ dependencies = [
  "bincode",
  "chrono",
  "clap 4.5.21",
- "cpal",
  "dotenvy",
  "eyre",
  "futures",
  "nucleo-matcher",
+ "selectia-audio-file",
+ "selectia-audio-server",
  "serde",
  "serde_json",
  "sha2",
@@ -3899,6 +3900,24 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "selectia-audio-file"
+version = "0.1.0"
+dependencies = [
+ "symphonia",
+ "thiserror 2.0.3",
+ "tracing",
+]
+
+[[package]]
+name = "selectia-audio-server"
+version = "0.1.0"
+dependencies = [
+ "cpal",
+ "thiserror 2.0.3",
+ "tracing",
 ]
 
 [[package]]

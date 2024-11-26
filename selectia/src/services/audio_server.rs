@@ -3,9 +3,15 @@ use crate::prelude::*;
 pub struct AudioServer {
 }
 
-pub type AudioServerService = AddressableService<FileLoaderTask>;
+#[derive(Debug, Clone)]
+pub enum AudioServerTask {
+    Exit,
+}
 
-pub fn file_loader(state_machine: StateMachine) -> AudioServerService {
+
+pub type AudioServerService = AddressableService<AudioServerTask>;
+
+pub fn audio_server(state_machine: StateMachine) -> AudioServerService {
     AddressableService::new(move |receiver, _| async move {
 
         Ok(())
@@ -15,5 +21,11 @@ pub fn file_loader(state_machine: StateMachine) -> AudioServerService {
 impl AudioServer {
     pub fn new() {
         
+    }
+}
+
+impl CancelableTask for AudioServerTask {
+    fn cancel() -> Self {
+        Self::Exit
     }
 }
