@@ -4,7 +4,8 @@ use cpal::traits::*;
 
 use crate::prelude::*;
 
-pub struct Backend {}
+pub struct Backend {
+}
 
 impl Backend {
     pub fn new(device: &cpal::Device, config: cpal::SupportedStreamConfig) -> AudioServerResult<Self> {
@@ -49,7 +50,6 @@ where
     let stream = device.build_output_stream(
         config,
         move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-            dbg!("data");
             write_data(data, channels, &mut next_value)
         },
         err_fn,

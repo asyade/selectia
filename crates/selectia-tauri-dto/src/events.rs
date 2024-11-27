@@ -19,7 +19,6 @@ pub struct WorkerQueueTaskCreatedEvent {
     pub task: WorkerQueueTask,
 }
 
-
 #[derive(Serialize, Clone, TS)]
 #[ts(export_to = "events.ts")]
 pub struct WorkerQueueTaskUpdatedEvent {

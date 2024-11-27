@@ -5,13 +5,29 @@ mod error;
 mod prelude;
 mod spec;
 
+use std::{collections::VecDeque, sync::{mpsc::Sender, Arc, Mutex, RwLock}};
+use cpal::SupportedStreamConfig;
 use prelude::*;
 
-pub struct AudioServer {}
+pub struct AudioServer {
+    buffer: Arc<RwLock<Option<SharedBuffer>>>,
+}
+
+#[derive(Clone)]
+pub struct SharedBuffer {
+    buffer: Arc<Mutex<VecDeque<f32>>>,
+    config: Arc<RwLock<SupportedStreamConfig>>,
+}
 
 impl AudioServer {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            buffer: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    pub fn get_buffer_channel(&self) -> AudioServerResult<Sender<Vec<f32>>> {
+        todo!()
     }
 
     pub fn get_hosts(&self) -> AudioServerResult<Vec<HostSpec>> {
@@ -73,5 +89,15 @@ impl std::fmt::Debug for InputDeviceSpec {
 impl std::fmt::Debug for OutputDeviceSpec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "OutputDeviceSpec {{ spec: {:?} }}", self.spec)
+    }
+}
+
+
+impl SharedBuffer {
+    pub fn new(config: SupportedStreamConfig) -> Self {
+        Self {
+            buffer: Arc::new(Mutex::new(VecDeque::new())),
+            config: Arc::new(RwLock::new(config)),
+        }
     }
 }

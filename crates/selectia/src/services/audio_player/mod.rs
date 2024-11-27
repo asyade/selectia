@@ -2,8 +2,7 @@ use std::{collections::BTreeMap, sync::atomic::AtomicU32};
 
 use crate::prelude::*;
 
-use deck::DeckFileState;
-pub use deck::PlayerDeck;
+pub use deck::*;
 mod deck;
 
 pub type AudioPlayerService = AddressableServiceWithDispatcher<AudioPlayerTask, AudioPlayerEvent>;
@@ -27,7 +26,7 @@ pub enum AudioPlayerEvent {
     DeckCreated { id: u32 },
     DeckFileUpdated { 
         id: u32,
-        state: DeckFileState,    
+        state: DeckFileStateSnapshot,    
     },
 }
 

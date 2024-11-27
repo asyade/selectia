@@ -4,7 +4,9 @@ export type AppError = { message: string, id: number, };
 
 export type ContextId = bigint;
 
-export type DeckFileView = { title: string, length: number, offset: number, };
+export type DeckFileStatus = { "kind": "Loading", progress: number, } | { "kind": "Playing", offset: number, } | { "kind": "Paused", offset: number, };
+
+export type DeckFileView = { title: string, length: number, status: DeckFileStatus, };
 
 export type DeckView = { file: DeckFileView | null, id: number, };
 

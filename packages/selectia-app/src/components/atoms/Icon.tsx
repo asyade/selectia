@@ -1,6 +1,6 @@
 
 import { MdAdd, MdFolder, MdFolderOpen, MdOutlineFolder, MdOutlineFolderOpen } from "react-icons/md";
-import { FaArrowLeft, FaTasks, FaTrash } from "react-icons/fa";
+import { FaArrowLeft, FaPause, FaPlay, FaTasks, FaTrash } from "react-icons/fa";
 import { FaChevronDown, FaChevronUp, FaCircleXmark, FaEye, FaEyeSlash, FaGear, FaMinus, FaPen, FaSquare, FaWindowMaximize, FaXmark } from "react-icons/fa6";
 
 interface IconProps {
@@ -89,4 +89,12 @@ export function IconGear(props: IconProps) {
 
 export function IconBack(props: IconProps) {
     return <FaArrowLeft width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} />;
+}
+
+export function IconPlay(props: IconProps) {
+    return <FaPlay width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} />;
+}
+
+export function IconPause(props: IconProps) {
+    return <FaPause width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} />;
 }

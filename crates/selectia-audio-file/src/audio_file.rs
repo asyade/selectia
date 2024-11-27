@@ -1,4 +1,4 @@
-use symphonia::core::audio::SignalSpec;
+use symphonia::core::audio::{Channels, SignalSpec};
 use symphonia::core::formats::{FormatReader, Track};
 use symphonia::core::io::MediaSource;
 
@@ -8,6 +8,7 @@ use std::fs::File;
 pub struct AudioFile {
     format: Box<dyn FormatReader>,
     samples: Option<Vec<f32>>,
+    spec: Option<SignalSpec>,
 }
 
 impl AudioFile {
@@ -35,6 +36,7 @@ impl AudioFile {
         Ok(Self {
             format: format,
             samples: None,
+            spec: None,
         })
     }
 
@@ -44,6 +46,14 @@ impl AudioFile {
     pub fn open<T: AsRef<Path>>(path: T) -> AudioFileResult<Self> {
         let file = Box::new(File::open(&path)?);
         Self::from_source(file, path)
+    }
+
+    pub fn sample_rate(&self) -> u32 {
+        self.spec.as_ref().expect("file not loaded").rate
+    }
+
+    pub fn channels(&self) -> Channels {
+        self.spec.as_ref().expect("file not loaded").channels
     }
 
     pub fn decode(&mut self) -> AudioFileResult<()> {
@@ -90,17 +100,16 @@ impl AudioFile {
                     // decoded audio buffer format.
                     if sample_buf.is_none() {
                         // Get the audio buffer specification.
-                        let spec = *audio_buf.spec();
+                        self.spec = Some(*audio_buf.spec());
                         // Get the capacity of the decoded buffer. Note: This is capacity, not length!
                         let duration = audio_buf.capacity() as u64;
                         // Create the f32 sample buffer.
-                        sample_buf = Some(SampleBuffer::<f32>::new(duration, spec));
+                        sample_buf = Some(SampleBuffer::<f32>::new(duration, *audio_buf.spec()));
                     }
 
                     // Copy the decoded audio buffer into the sample buffer in an interleaved format.
                     if let Some(buf) = &mut sample_buf {
                         buf.copy_interleaved_ref(audio_buf);
-
                         // The samples may now be access via the `samples()` function.
                         decoded_samples.extend_from_slice(buf.samples());
                     }

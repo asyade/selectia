@@ -62,6 +62,7 @@ impl App {
         Ok(())
     }
 
+
     pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
         self.handle = Some(handle.clone());
 
@@ -102,11 +103,7 @@ impl App {
                         let _ = app_handle.emit(dto::AudioDeckCreatedEvent { id });
                     }
                     AudioPlayerEvent::DeckFileUpdated { id, state } => {
-                        let file = Some(dto::DeckFileView {
-                            title: state.path.to_string_lossy().to_string(),
-                            length: 0.0,
-                            offset: 0.0,
-                        });
+                        let file = Some(dto::DeckFileView::from(state));
                         let _ = app_handle.emit(dto::AudioDeckUpdatedEvent { id, file });
                     }
                 }

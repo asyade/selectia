@@ -39,10 +39,25 @@ pub struct DeckView {
 
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
+#[serde(tag = "kind")]
+pub enum DeckFileStatus {
+    Loading {
+        progress: u32,
+    },
+    Playing {
+        offset: u32,
+    },
+    Paused {
+        offset: u32,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
 pub struct DeckFileView {
     pub title: String,
-    pub length: f32,
-    pub offset: f32,
+    pub length: u32,
+    pub status: DeckFileStatus,
 }
 
 #[derive(Serialize, Deserialize, Clone, TS)]
@@ -137,3 +152,18 @@ impl From<selectia::database::views::entry_view::MetadataTagView> for MetadataTa
     }
 }
 
+impl From<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
+    fn from(status: selectia::services::audio_player::DeckFileStatus) -> Self {
+        match status {
+            selectia::services::audio_player::DeckFileStatus::Loading { progress } => DeckFileStatus::Loading { progress },
+            selectia::services::audio_player::DeckFileStatus::Playing { offset } => DeckFileStatus::Playing { offset },
+            selectia::services::audio_player::DeckFileStatus::Paused { offset } => DeckFileStatus::Paused { offset },
+        }
+    }
+}
+
+impl From<selectia::services::audio_player::DeckFileStateSnapshot> for DeckFileView {
+    fn from(state: selectia::services::audio_player::DeckFileStateSnapshot) -> Self {
+        DeckFileView { title: state.path.to_string_lossy().to_string(), length: 0, status: state.status.into() }
+    }
+}
