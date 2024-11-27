@@ -62,3 +62,19 @@ export type WorkerQueueTaskUpdatedEvent = {
 
 
 export type ContextId = string;
+
+export interface DeckView {
+    file: DeckFileView | null
+    id: number,
+}
+
+export interface DeckFileView {
+    title: string,
+    length: number,
+    offset: number,
+}
+
+export interface AudioDeckUpdatedEvent {
+    id: number;
+    file: DeckFileView | null;
+}

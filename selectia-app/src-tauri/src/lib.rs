@@ -43,6 +43,9 @@ pub async fn run() {
             interactive_list_create_context,
             get_worker_queue_tasks,
             get_worker_queue_task,
+            create_audio_deck,
+            get_audio_decks,
+            load_audio_track,
         ])
         .setup(setup)
         .run(tauri::generate_context!())

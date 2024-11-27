@@ -8,16 +8,16 @@ import { TextInput } from "../../atoms/TextInput";
 import { EntryViewCursor, interactive_list_create_tag, interactive_list_get_tag_creation_suggestions, MetadataTagView, TAG_NAME_ID_DIRECTORY, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName, TagView } from "../../../selectia-rs";
 import { InteractiveTableLabel } from "./InteractiveTableLabel";
 import { ItemTypes } from "../../pages/ManagerPage";
-import { useDrop } from "react-dnd";
+import { useDrag, useDrop } from "react-dnd";
 import { IconTrash } from "../../atoms/Icon";
 
 interface InteractiveTableRowProps {
     entry: EntryViewCursor;
     allTagNames: TagName[];
+    onPlay?: (entry: EntryViewCursor) => void;
 }
 
 export function InteractiveTableRow(props: InteractiveTableRowProps) {
-    const title = props.entry.title();
     const [expanded, setExpanded] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -28,15 +28,40 @@ export function InteractiveTableRow(props: InteractiveTableRowProps) {
         setExpanded(false);
     });
 
-    const title_component = <div>
-        <p className="text-slate-400 text-lg truncate block">{title}</p>
-    </div>;
+    const title_component = <InteractiveTableRowTitle {...props} />;
+
+    const handleClick = (event: React.MouseEvent) => {
+        if (event.detail == 2) {
+            props.onPlay?.(props.entry);
+        } else {
+            setExpanded(!expanded);
+        }
+    }
 
     const tag_section = <TableRowTagsSection {...props} />;
 
-    return <TableRow innerRef={ref} className={`${expanded ? "bg-slate-800" : ""} rounded-md`} onClick={() => setExpanded(!expanded)} title_component={title_component} tag_components={<div>
+    return <TableRow innerRef={ref} className={`${expanded ? "bg-slate-800" : ""} rounded-md`} onClick={handleClick} title_component={title_component} tag_components={<div>
         {tag_section}
     </div>} />;
+}
+
+function InteractiveTableRowTitle(props: InteractiveTableRowProps) {
+    const title = props.entry.title();
+
+    const [{ opacity }, dragRef] = useDrag(
+        () => ({
+            type: ItemTypes.INTERACTIVE_TABLE_ROW,
+            item: props.entry,
+            collect: (monitor) => ({
+                opacity: monitor.isDragging() ? 0.5 : 1,
+            }),
+        }),
+        [],
+    );
+
+    return <div ref={dragRef} style={{ opacity }}>
+        <p className="text-slate-400 text-lg truncate block">{title}</p>
+    </div>;
 }
 
 function TableRowTagsSection(props: InteractiveTableRowProps) {

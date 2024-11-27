@@ -1,3 +1,4 @@
+use audio_player::{audio_player, AudioPlayerEvent, AudioPlayerService};
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
@@ -7,13 +8,14 @@ use worker::{
     worker, Worker, WorkerEvent, WorkerTask,
 };
 
-use crate::{prelude::*, settings::Settings};
 use crate::dto::to_frontend::*;
+use crate::{prelude::*, settings::Settings};
 
 #[derive(Clone)]
 pub struct App {
     pub(crate) handle: Option<AppHandle>,
     pub(crate) database: Database,
+    pub(crate) audio_player: AudioPlayerService,
     pub(crate) worker: Worker,
     pub(crate) state_machine: StateMachine,
     pub(crate) file_loader: FileLoader,
@@ -24,11 +26,11 @@ pub struct AppState(pub(crate) Arc<RwLock<App>>);
 
 pub type AppArg<'a> = State<'a, AppState>;
 
-
 impl App {
     pub async fn new() -> Self {
         let settings = Settings::load().expect("Failed to load settings");
         let database = Database::new(&settings.database_path).await.unwrap();
+        let audio_player = audio_player(database.clone());
         let state_machine = state_machine(database.clone());
         let file_loader = file_loader(state_machine.clone());
 
@@ -37,6 +39,7 @@ impl App {
         App {
             handle: None,
             database,
+            audio_player,
             worker,
             state_machine,
             file_loader,
@@ -47,34 +50,50 @@ impl App {
     pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
         self.handle = Some(handle.clone());
 
+        let handle_clone = handle.clone();
         self.worker
             .register_channel(channel_iterator(move |msg| {
-                let handle = handle.clone();
-                async move {
-                    match msg {
-                        WorkerEvent::QueueTaskCreated { id, status } => {
-                            let task = WorkerQueueTask { id, status };
-                            let _ = handle.emit(
-                                "worker-queue-task-created",
-                                WorkerQueueTaskCreatedEvent { task },
-                            );
-                        }
-                        WorkerEvent::QueueTaskUpdated {
-                            id,
-                            status,
-                            removed,
-                        } => {
-                            let task = if removed {
-                                None
-                            } else {
-                                Some(WorkerQueueTask { id, status })
-                            };
-                            let _ = handle.emit(
-                                "worker-queue-task-updated",
-                                WorkerQueueTaskUpdatedEvent { id, task },
-                            );
-                        }
-                        _ => {}
+                match msg {
+                    WorkerEvent::QueueTaskCreated { id, status } => {
+                        let task = WorkerQueueTask { id, status };
+                        let _ = handle_clone.emit(
+                            "worker-queue-task-created",
+                            WorkerQueueTaskCreatedEvent { task },
+                        );
+                    }
+                    WorkerEvent::QueueTaskUpdated {
+                        id,
+                        status,
+                        removed,
+                    } => {
+                        let task = if removed {
+                            None
+                        } else {
+                            Some(WorkerQueueTask { id, status })
+                        };
+                        let _ = handle_clone.emit(
+                            "worker-queue-task-updated",
+                            WorkerQueueTaskUpdatedEvent { id, task },
+                        );
+                    }
+                }
+            }))
+            .await;
+
+        let handle_clone = handle.clone();
+        self.audio_player
+            .register_channel(channel_iterator(move |msg| {
+                match msg {
+                    AudioPlayerEvent::DeckCreated { id } => {
+                        let _ = handle_clone.emit("audio-deck-created", AudioDeckCreatedEvent { id });
+                    }
+                    AudioPlayerEvent::DeckFileUpdated { id, state } => {
+                        let file = Some(DeckFileView {
+                            title: state.path.to_string_lossy().to_string(),
+                            length: 0.0,
+                            offset: 0.0,
+                        });
+                        let _ = handle_clone.emit("audio-deck-updated", AudioDeckUpdatedEvent { id, file });
                     }
                 }
             }))
@@ -82,7 +101,7 @@ impl App {
 
         let app_handle = self.clone();
         self.state_machine
-            .register_channel(channel_iterator(move |msg| {
+            .register_channel(async_channel_iterator(move |msg| {
                 let app_handle = app_handle.clone();
                 async move {
                     match msg {
@@ -112,14 +131,6 @@ impl App {
         self.handle
             .as_ref()
             .expect("handle() `App::handle` called before setup")
-    }
-
-    pub async fn with_embedding(self) -> eyre::Result<Self> {
-        let embedding = embedding(self.state_machine.clone());
-        self.state_machine
-            .register_channel(embedding.sender().clone())
-            .await;
-        Ok(self)
     }
 
     pub async fn load_directory(self, path: PathBuf) -> eyre::Result<()> {

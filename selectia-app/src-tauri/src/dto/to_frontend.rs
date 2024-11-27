@@ -3,6 +3,17 @@ use crate::prelude::*;
 use worker::tasks::TaskStatus;
 
 #[derive(Serialize, Clone)]
+pub struct AudioDeckCreatedEvent {
+    pub id: u32,
+}
+
+#[derive(Serialize, Clone)]
+pub struct AudioDeckUpdatedEvent {
+    pub id: u32,
+    pub file: Option<DeckFileView>,
+}
+
+#[derive(Serialize, Clone)]
 pub struct WorkerQueueTaskCreatedEvent {
     pub task: WorkerQueueTask,
 }
@@ -19,11 +30,13 @@ pub struct WorkerQueueTask {
     pub status: TaskStatus,
 }
 
+#[derive(Serialize, Clone)]
 pub struct DeckView {
     pub file: Option<DeckFileView>,
     pub id: u32,
 }
 
+#[derive(Serialize, Clone)]
 pub struct DeckFileView {
     pub title: String,
     pub length: f32,

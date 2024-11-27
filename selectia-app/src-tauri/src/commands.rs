@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+
+use audio_player::AudioPlayerTask;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::views::TagView;
 use tauri::Emitter;
@@ -136,3 +139,24 @@ pub async fn get_worker_queue_task<'a>(task_id: i64, app: AppArg<'a>) -> AppResu
     Ok(WorkerQueueTask { id: task.id, status: TaskStatus::try_from(task.status.as_str()).unwrap() })
 }
 
+
+#[tauri::command]
+pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
+    let (callback, receiver) = TaskCallback::new();
+    app.0.write().await.audio_player.send(AudioPlayerTask::CreateDeck { callback }).await.map_err(|e| e.to_string())?;
+    Ok(receiver.wait().await.unwrap())
+}
+
+#[tauri::command]
+pub async fn get_audio_decks<'a>(app: AppArg<'a>) -> AppResult<Vec<DeckView>> {
+    let (callback, receiver) = TaskCallback::new();
+    app.0.write().await.audio_player.send(AudioPlayerTask::GetDecks { callback }).await.map_err(|e| e.to_string())?;
+    let decks = receiver.wait().await.unwrap();
+    Ok(decks.into_iter().map(|(id, _deck)| DeckView { id, file: None }).collect())
+}
+
+#[tauri::command]
+pub async fn load_audio_track<'a>(deck_id: u32, metadata_id: i64, app: AppArg<'a>) -> AppResult<()> {
+    app.0.write().await.audio_player.send(AudioPlayerTask::LoadTrack { deck_id, metadata_id }).await.map_err(|e| e.to_string())?;
+    Ok(())
+}

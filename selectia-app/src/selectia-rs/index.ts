@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ContextId, EntryView, FilterSelection, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName, TagView, WorkerQueueTask } from "./models";
+import { ContextId, DeckView, EntryView, FilterSelection, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE, TagName, TagView, WorkerQueueTask } from "./models";
 
 export * from "./models";
 
@@ -41,6 +41,18 @@ export async function get_worker_queue_tasks(): Promise<WorkerQueueTask[]> {
 
 export async function get_worker_queue_task(taskId: number): Promise<WorkerQueueTask> {
     return await invoke("get_worker_queue_task", { taskId }).then(x => x as WorkerQueueTask);
+}
+
+export async function create_audio_deck(): Promise<number> {
+    return await invoke("create_audio_deck").then(x => x as number);
+}
+
+export async function get_audio_decks(): Promise<DeckView[]> {
+    return await invoke("get_audio_decks").then(x => x as DeckView[]);
+}
+
+export async function load_audio_track(deckId: number, metadataId: number) {
+    return await invoke("load_audio_track", { deckId, metadataId });
 }
 
 export class EntryViewCursor {

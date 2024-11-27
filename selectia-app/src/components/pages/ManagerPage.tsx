@@ -3,13 +3,14 @@ import { Statusbar } from "../organisms/StatusBar";
 import { useCallback, useEffect, useState } from "react";
 import { InteractiveTable } from "../organisms/InteractiveTable/InteractiveTable";
 import { FilterSelection } from "../../selectia-rs/models";
-import { interactive_list_create_context, interactive_list_delete_context } from "../../selectia-rs";
+import { EntryViewCursor, interactive_list_create_context, interactive_list_delete_context } from "../../selectia-rs";
 
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { Player } from "../organisms/Player/Player";
 
 export const ItemTypes = {
+    INTERACTIVE_TABLE_ROW: "interactive_table_row",
     INTERACTIVE_TABLE_LABEL: "interactive_table_label",
     FILTER_SECTION_LABEL: "filter_section_label",
 }
@@ -24,6 +25,7 @@ export function ManagerPage() {
             interactive_list_delete_context(contextId);
         }
     }, [contextId]);
+
 
     useEffect(() => {
         interactive_list_create_context().then(setContextId);

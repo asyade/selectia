@@ -11,14 +11,14 @@ export function Table(props: {children: React.ReactNode[]}) {
 export interface TableRowProps {
     title_component: React.ReactNode;
     tag_components: React.ReactNode[] | React.ReactNode;
-    onClick?: () => void;
+    onClick?: (event: React.MouseEvent) => void;
     className?: string;
     innerRef?: React.RefObject<HTMLDivElement>;
 }
 
 export function TableRow(props: TableRowProps) {
     return (
-        <div onClick={() => props.onClick?.()} ref={props.innerRef} className={`flex flex-col ${props.className}`}>
+        <div onClick={(e) => props.onClick?.(e)} ref={props.innerRef} className={`flex flex-col ${props.className}`}>
             <div className="p-1 selectable">
                 {props.title_component}
             </div>
