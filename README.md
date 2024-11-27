@@ -93,3 +93,9 @@ yarn tauri dev
 ```
 
 </details>
+
+### Rust/Typescript bindings
+
+The Rust/Typescript bindings are generated using [ts-rs](https://github.com/Aleph-Alpha/ts-rs).
+You can regenerate them by running `cargo test -p selectia-app` which will
+generate the `src-tauri/bindings` folder.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AudioDeckUpdatedEvent, DeckFileView, DeckView } from "../models";
+import { AudioDeckCreatedEvent, AudioDeckUpdatedEvent, DeckFileView, DeckView } from "../models";
 import { get_audio_decks } from "..";
 import { listen } from "@tauri-apps/api/event";
 
@@ -15,8 +15,8 @@ export function useAudioPlayer(): [DeckView[]] {
     useEffect(() => {
         const unlisten = listen("audio-deck-created", (event) => {
             console.log("audio-deck-created", event);
-            const id = event.payload as number;
-            setDecks(prev => [...prev, { id, file: null }]);
+            const payload = event.payload as AudioDeckCreatedEvent
+            setDecks(prev => [...prev, { id: payload.id, file: null }]);
         });
 
         return () => {
@@ -33,6 +33,8 @@ export function useDeck(deckId: number): [DeckFileView | null] {
     useEffect(() => {
         const unlisten = listen("audio-deck-updated", (event) => {
             const payload = event.payload as AudioDeckUpdatedEvent;
+            console.log("audio-deck-updated", payload);
+            console.log("deckId", deckId);
             if (payload.id === deckId) {
                 setFile(payload.file);
             }

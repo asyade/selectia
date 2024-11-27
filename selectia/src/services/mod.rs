@@ -1,15 +1,24 @@
+use std::{
+    future::IntoFuture,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
 use crate::prelude::*;
 
 pub use addresable_service::*;
 pub use addresable_service_with_dispatcher::{dispatcher::*, AddressableServiceWithDispatcher};
 pub use threaded_service::*;
 
+pub mod audio_player;
 pub mod audio_server;
 pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
 pub mod worker;
-pub mod audio_player;
+
+pub type ServiceSender<T> = sync::mpsc::Sender<T>;
+pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;
 
 pub trait Service<T> {
     fn blocking_send(&self, message: T) -> Result<()>;
@@ -20,19 +29,61 @@ pub trait ChannelService<T>: Service<T> {
     fn sender(&self) -> &sync::mpsc::Sender<T>;
 }
 
-pub trait Task: Sized + Send + 'static {
-}
+pub trait Task: Sized + Send + 'static {}
 
-pub trait Event: Task + Clone + 'static {
-}
+pub trait Event: Task + Clone + 'static {}
 
 impl<T: Task + Clone + 'static> Event for T {}
+
+#[derive(Clone)]
+pub struct TaskCallback<T> {
+    pub sender: Arc<RwLock<Option<sync::oneshot::Sender<T>>>>,
+}
+
+impl <T> std::fmt::Debug for TaskCallback<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TaskCallback")
+    }
+}
+
+pub struct TaskCallbackReceiver<T> {
+    pub receiver: sync::oneshot::Receiver<T>,
+}
+
+impl<T: Send + 'static> TaskCallback<T> {
+    pub fn new() -> (Self, TaskCallbackReceiver<T>) {
+        let (sender, receiver) = sync::oneshot::channel();
+        (
+            Self {
+                sender: Arc::new(RwLock::new(Some(sender))),
+            },
+            TaskCallbackReceiver { receiver },
+        )
+    }
+
+    pub async fn resolve(&self, value: T) -> Result<()> {
+        let sender = {
+            let mut lock = self.sender.write().await;
+            lock.take()
+                .ok_or_else(|| eyre::eyre!("Callback already resolved"))?
+        };
+        sender
+            .send(value)
+            .map_err(|_| eyre!("TaskCallback sender dropped"))
+    }
+}
+
+impl<T: Send + 'static> TaskCallbackReceiver<T> {
+    pub async fn wait(self) -> Result<T> {
+        Ok(self.receiver.await?)
+    }
+}
 
 mod addresable_service {
     use crate::prelude::*;
 
-    #[derive(Clone)]
     #[allow(unused_variables)]
+    #[derive(Clone)]
     pub struct AddressableService<T> {
         pub(super) sender: sync::mpsc::Sender<T>,
     }
@@ -66,9 +117,7 @@ mod addresable_service {
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
             let _background_handle = tokio::spawn(background_task(receiver, sender.clone()));
-            Self {
-                sender,
-            }
+            Self { sender }
         }
     }
 }
@@ -79,7 +128,7 @@ mod addresable_service_with_dispatcher {
     use dispatcher::EventDispatcher;
 
     #[derive(Clone)]
-    pub struct AddressableServiceWithDispatcher<T, R> {
+    pub struct AddressableServiceWithDispatcher<T: Task, R: Event> {
         service: AddressableService<T>,
         dispatcher: EventDispatcher<R>,
     }
@@ -99,9 +148,7 @@ mod addresable_service_with_dispatcher {
             ));
             Self {
                 dispatcher,
-                service: AddressableService {
-                    sender,
-                },
+                service: AddressableService { sender },
             }
         }
 
@@ -110,17 +157,13 @@ mod addresable_service_with_dispatcher {
         }
     }
 
-    impl<T: Task, R: Event> ChannelService<T>
-        for AddressableServiceWithDispatcher<T, R>
-    {
+    impl<T: Task, R: Event> ChannelService<T> for AddressableServiceWithDispatcher<T, R> {
         fn sender(&self) -> &sync::mpsc::Sender<T> {
             &self.service.sender
         }
     }
 
-    impl<T: Task, R: Event> Service<T>
-        for AddressableServiceWithDispatcher<T, R>
-    {
+    impl<T: Task, R: Event> Service<T> for AddressableServiceWithDispatcher<T, R> {
         async fn send(&self, message: T) -> Result<()> {
             self.service.send(message).await
         }
@@ -198,9 +241,7 @@ mod threaded_service {
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
             let _background_handle = std::thread::spawn(move || background_task(receiver));
-            Self {
-                sender,
-            }
+            Self { sender }
         }
     }
 
@@ -227,6 +268,24 @@ mod threaded_service {
 }
 
 pub fn channel_iterator<
+    IT: Task,
+    F: FnMut(IT) -> () + Send + 'static,
+>(
+    mut f: F,
+) -> tokio::sync::mpsc::Sender<IT> {
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(4096);
+    let sender_clone = sender.clone();
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            f(event);
+        }
+    });
+    sender_clone
+}
+
+
+
+pub fn async_channel_iterator<
     IT: Task,
     F: FnMut(IT) -> Fut + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,

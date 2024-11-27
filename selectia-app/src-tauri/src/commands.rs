@@ -130,13 +130,13 @@ pub async fn get_tags_by_name<'a>(tag_name: String, app: AppArg<'a>) -> AppResul
 #[tauri::command]
 pub async fn get_worker_queue_tasks<'a>(app: AppArg<'a>) -> AppResult<Vec<WorkerQueueTask>> {
     let all_tasks = app.0.read().await.database.get_tasks().await.map_err(|e| e.to_string())?;
-    Ok(all_tasks.into_iter().map(|t| WorkerQueueTask { id: t.id, status: TaskStatus::try_from(t.status.as_str()).unwrap() }).collect())
+    Ok(all_tasks.into_iter().map(|t| WorkerQueueTask { id: t.id, status: TaskStatus::try_from(t.status.as_str()).unwrap().into() }).collect())
 }
 
 #[tauri::command]
 pub async fn get_worker_queue_task<'a>(task_id: i64, app: AppArg<'a>) -> AppResult<WorkerQueueTask> {
     let task = app.0.read().await.database.get_task(task_id).await.map_err(|e| e.to_string())?;
-    Ok(WorkerQueueTask { id: task.id, status: TaskStatus::try_from(task.status.as_str()).unwrap() })
+    Ok(WorkerQueueTask { id: task.id, status: TaskStatus::try_from(task.status.as_str()).unwrap().into() })
 }
 
 

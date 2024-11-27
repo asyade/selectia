@@ -55,7 +55,7 @@ impl App {
             .register_channel(channel_iterator(move |msg| {
                 match msg {
                     WorkerEvent::QueueTaskCreated { id, status } => {
-                        let task = WorkerQueueTask { id, status };
+                        let task = WorkerQueueTask { id, status: status.into() };
                         let _ = handle_clone.emit(
                             "worker-queue-task-created",
                             WorkerQueueTaskCreatedEvent { task },
@@ -69,7 +69,7 @@ impl App {
                         let task = if removed {
                             None
                         } else {
-                            Some(WorkerQueueTask { id, status })
+                            Some(WorkerQueueTask { id, status: status.into() })
                         };
                         let _ = handle_clone.emit(
                             "worker-queue-task-updated",
@@ -83,6 +83,7 @@ impl App {
         let handle_clone = handle.clone();
         self.audio_player
             .register_channel(channel_iterator(move |msg| {
+                info!("audio_player_event: {:?}", &msg);
                 match msg {
                     AudioPlayerEvent::DeckCreated { id } => {
                         let _ = handle_clone.emit("audio-deck-created", AudioDeckCreatedEvent { id });

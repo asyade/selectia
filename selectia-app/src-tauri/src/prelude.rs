@@ -15,3 +15,5 @@ pub use selectia::database::views::entry_view::{EntryView, EntryViewFilter};
 pub use crate::app::{AppArg, App, AppState};
 pub use crate::error::AppResult;
 pub use serde::{Serialize, Deserialize};
+
+pub use ts_rs::TS;

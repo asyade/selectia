@@ -78,3 +78,7 @@ export interface AudioDeckUpdatedEvent {
     id: number;
     file: DeckFileView | null;
 }
+
+export interface AudioDeckCreatedEvent {
+    id: number;
+}
