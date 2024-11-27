@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::RwLockReadGuard};
+use std::{ops::{Deref, DerefMut}, sync::RwLockReadGuard};
 
 use audio_player::{audio_player, AudioPlayerEvent, AudioPlayerService};
 use dto::Events;
@@ -189,6 +189,20 @@ impl AsRef<Arc<RwLock<App>>> for AppState {
 
 impl AsMut<Arc<RwLock<App>>> for AppState {
     fn as_mut(&mut self) -> &mut Arc<RwLock<App>> {
+        &mut self.0
+    }
+}
+
+impl Deref for AppState {
+    type Target = Arc<RwLock<App>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for AppState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }

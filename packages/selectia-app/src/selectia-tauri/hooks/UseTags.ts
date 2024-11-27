@@ -6,13 +6,14 @@ import { TagListChangedEvent } from "../dto/events";
 
 export function useTags(name: string, auto_update: boolean = false) {
     const [tags, setTags] = useState<TagView[]>([]);
+    
     useEffect(() => {
         get_tags_by_name(name).then(setTags);
     }, [name]);
 
     if (auto_update) {
-        useEvent<TagListChangedEvent>("TagListChanged", (event) => {
-            setTags(event.tags);
+        useEvent<TagListChangedEvent>("TagListChanged", () => {
+            get_tags_by_name(name).then(setTags);
         });
     }
 

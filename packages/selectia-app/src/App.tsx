@@ -6,6 +6,11 @@ import { ToolBar } from "./components/organisms/ToolBar";
 import { Statusbar } from "./components/organisms/StatusBar";
 import { useState } from "react";
 
+
+/// TODO: this is a workaround but we need to fix the serialization of BigInts in a proper way or use i32, string or something else in the backend
+(BigInt.prototype as any).toJSON = function() { return Number(this) }
+
+
 function App() {
   const [page, setPage] = useState<"manager" | "settings">("manager");
 

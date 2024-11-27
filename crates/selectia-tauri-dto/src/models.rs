@@ -5,6 +5,14 @@ use selectia::services::worker::tasks::TaskStatus as SelectiaTaskStatus;
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
+pub struct AppError {
+    pub message: String,
+    pub id: u32,
+}
+
+#[allow(dead_code)]
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
 pub struct ContextId(i64);
 
 #[derive(Serialize, Deserialize, Clone, TS)]
@@ -89,6 +97,7 @@ pub struct TagView {
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
 pub enum Models {
+    AppError(AppError),
     ContextId(ContextId),
     WorkerQueueTask(WorkerQueueTask),
     TaskStatus(TaskStatus),
