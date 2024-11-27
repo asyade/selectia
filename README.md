@@ -61,31 +61,15 @@ Selectia can upscale audio files to improve the playback quality.
 
 <details>
     <summary>Running the app in dev mode</summary>
-First you want to make sure that the default database file is present and up to
-date (which is the case on release).
 
-> You can run `scripts/regenerate_db.sh` to regenerate the database from the
-> latest schema.
-
-Once done you want to update your environment to allow SQLX to find the database
-which is used for schema validation.
-
-```bash
-# DATABASE_URL is relative to the root of the project
-export DATABASE_URL=sqlite://selectia.db
-```
-
-> Its a good idea to ensure that your IDE/rust analyzer is aware of the
-> `DATABASE_URL` environment variable.
-
-Once done you can install the frontend dependencies.
+Install the frontend dependencies.
 
 ```bash
 cd selectia-app
 yarn install
 ```
 
-And finally run the app.
+And finally run the app (this will automatically build the Rust part and watch for changes in both the Rust and Typescript parts).
 
 ```bash
 cd selectia-app

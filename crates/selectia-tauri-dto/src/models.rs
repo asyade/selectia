@@ -1,0 +1,112 @@
+use crate::prelude::*;
+use selectia::services::worker::tasks::TaskStatus as SelectiaTaskStatus;
+
+#[allow(dead_code)]
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct ContextId(i64);
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct WorkerQueueTask {
+    pub id: i64,
+    pub status: TaskStatus,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub enum TaskStatus {
+    Queued,
+    Processing,
+    Done,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct DeckView {
+    pub file: Option<DeckFileView>,
+    pub id: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct DeckFileView {
+    pub title: String,
+    pub length: f32,
+    pub offset: f32,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct TagSelection {
+    pub id: i64,
+    pub value: String,
+    pub selected: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct FilterSelection {
+    pub directories: Vec<String>,
+    pub tags: HashMap<i32, Vec<TagSelection>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct EntryView {
+    pub metadata_id: i64,
+    pub metadata_hash: String,
+    pub tags: Vec<MetadataTagView>,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct MetadataTagView {
+    pub tag_id: i64,
+    pub metadata_tag_id: i64,
+    pub tag_name_id: i64,
+    pub tag_value: String,
+    pub metadata_id: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct TagName {
+    pub id: i64,
+    pub name: String,
+    pub use_for_filtering: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct TagView {
+    pub id: i64,
+    pub value: String,
+    pub name_id: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub enum Models {
+    ContextId(ContextId),
+    WorkerQueueTask(WorkerQueueTask),
+    TaskStatus(TaskStatus),
+    DeckView(DeckView),
+    DeckFileView(DeckFileView),
+    TagSelection(TagSelection),
+    FilterSelection(FilterSelection),
+    EntryView(EntryView),
+    MetadataTagView(MetadataTagView),
+    TagName(TagName),
+    TagView(TagView),
+}
+
+impl From<SelectiaTaskStatus> for TaskStatus {
+    fn from(status: SelectiaTaskStatus) -> Self {
+        match status {
+            SelectiaTaskStatus::Queued => TaskStatus::Queued,
+            SelectiaTaskStatus::Processing => TaskStatus::Processing,
+            SelectiaTaskStatus::Done => TaskStatus::Done,
+        }
+    }
+}

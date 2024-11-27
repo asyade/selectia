@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+    user-select: none;
+}
+
+body {
+    overflow: hidden;
+}
+
+input, textarea, select, button, .selectable {
+    user-select: auto;
+}
+
+@layer scroll {
+    * {
+        /* This prevent scrollbar from shifting the page content */
+        scrollbar-width: 0;
+        scrollbar-gutter: 0px;
+
+        &::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-button {
+            display: none;
+        }
+    }
+}
