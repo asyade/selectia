@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use selectia::services::worker::tasks::TaskStatus as SelectiaTaskStatus;
 
+
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
@@ -110,3 +111,20 @@ impl From<SelectiaTaskStatus> for TaskStatus {
         }
     }
 }
+
+impl From<selectia::database::views::entry_view::EntryView> for EntryView {
+    fn from(entry: selectia::database::views::entry_view::EntryView) -> Self {
+        EntryView {
+            metadata_id: entry.metadata_id,
+            metadata_hash: entry.metadata_hash,
+            tags: entry.tags.0.into_iter().map(|e| e.into()).collect(),
+        }
+    }
+}
+
+impl From<selectia::database::views::entry_view::MetadataTagView> for MetadataTagView {
+    fn from(tag: selectia::database::views::entry_view::MetadataTagView) -> Self {
+        MetadataTagView { tag_id: tag.tag_id, metadata_tag_id: tag.metadata_tag_id, tag_name_id: tag.tag_name_id, tag_value: tag.tag_value, metadata_id: tag.metadata_id }
+    }
+}
+

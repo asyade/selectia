@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use audio_player::AudioPlayerTask;
+use dto::{EntryChangedEvent, EntryListChangedEvent, TagListChangedEvent};
 use interactive_list_context::InteractiveListContext;
 use selectia::database::views::TagView;
 use tauri::Emitter;
@@ -72,13 +73,8 @@ pub async fn interactive_list_create_tag<'a>(
             .map_err(|e| e.to_string())?
     };
     let handle = app.0.read().await;
-    let handle = handle.handle();
-    handle
-        .emit("entry_changed", entry)
-        .map_err(|e| e.to_string())?;
-    handle
-        .emit("tag_list_changed", ())
-        .map_err(|e| e.to_string())?;
+    handle.emit(EntryChangedEvent { entry: entry.into() }).map_err(|e| e.to_string())?;
+    handle.emit(TagListChangedEvent {}).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -112,10 +108,8 @@ pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<
         .clone()
         .load_directory(PathBuf::from(directory));
     fut.await.map_err(|e| e.to_string())?;
-    let handle = app.0.read().await.handle().clone();
-    handle
-        .emit("entry_list_changed", ())
-        .map_err(|e| e.to_string())?;
+    let handle = app.0.read().await;
+    handle.emit(EntryListChangedEvent {}).map_err(|e| e.to_string())?;
     Ok("ok".to_string())
 }
 

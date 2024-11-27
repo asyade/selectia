@@ -1,6 +1,7 @@
 use std::{ops::Deref, sync::RwLockReadGuard};
 
 use audio_player::{audio_player, AudioPlayerEvent, AudioPlayerService};
+use dto::Events;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
@@ -51,10 +52,20 @@ impl App {
         }
     }
 
+    pub fn emit<T: Into<Events>>(&self, event: T) -> eyre::Result<()> {
+        let event: Events = event.into();
+        let handle = self
+            .handle
+            .as_ref()
+            .expect("handle() `App::handle` called before setup");
+        handle.emit(event.name(), event)?;
+        Ok(())
+    }
+
     pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
         self.handle = Some(handle.clone());
 
-        let handle_clone = handle.clone();
+        let app_handle = self.clone();
         self.worker
             .register_channel(channel_iterator(move |msg| match msg {
                 WorkerEvent::QueueTaskCreated { id, status } => {
@@ -62,10 +73,7 @@ impl App {
                         id,
                         status: status.into(),
                     };
-                    let _ = handle_clone.emit(
-                        "worker-queue-task-created",
-                        dto::WorkerQueueTaskCreatedEvent { task },
-                    );
+                    let _ = app_handle.emit(dto::WorkerQueueTaskCreatedEvent { task });
                 }
                 WorkerEvent::QueueTaskUpdated {
                     id,
@@ -80,22 +88,18 @@ impl App {
                             status: status.into(),
                         })
                     };
-                    let _ = handle_clone.emit(
-                        "worker-queue-task-updated",
-                        dto::WorkerQueueTaskUpdatedEvent { id, task },
-                    );
+                    let _ = app_handle.emit(dto::WorkerQueueTaskUpdatedEvent { id, task });
                 }
             }))
             .await;
 
-        let handle_clone = handle.clone();
+        let app_handle = self.clone();
         self.audio_player
             .register_channel(channel_iterator(move |msg| {
                 info!("audio_player_event: {:?}", &msg);
                 match msg {
                     AudioPlayerEvent::DeckCreated { id } => {
-                        let _ =
-                            handle_clone.emit("audio-deck-created", dto::AudioDeckCreatedEvent { id });
+                        let _ = app_handle.emit(dto::AudioDeckCreatedEvent { id });
                     }
                     AudioPlayerEvent::DeckFileUpdated { id, state } => {
                         let file = Some(dto::DeckFileView {
@@ -103,8 +107,7 @@ impl App {
                             length: 0.0,
                             offset: 0.0,
                         });
-                        let _ = handle_clone
-                            .emit("audio-deck-updated", dto::AudioDeckUpdatedEvent { id, file });
+                        let _ = app_handle.emit(dto::AudioDeckUpdatedEvent { id, file });
                     }
                 }
             }))
@@ -172,13 +175,11 @@ impl App {
     }
 }
 
-
 impl AppState {
     pub fn new(app: App) -> Self {
         AppState(Arc::new(RwLock::new(app)))
     }
 }
-
 
 impl AsRef<Arc<RwLock<App>>> for AppState {
     fn as_ref(&self) -> &Arc<RwLock<App>> {

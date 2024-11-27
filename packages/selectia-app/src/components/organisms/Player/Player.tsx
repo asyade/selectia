@@ -22,7 +22,6 @@ export function Player() {
     }), []);
 
     const deckElements = useMemo(() => {
-        console.log("decks", decks);
         return decks.map((deck) => <PlayerDeck key={deck.id} deckId={deck.id} />);
     }, [decks]);
 

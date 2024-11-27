@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { TagView } from "../dto/models";
 import { get_tags_by_name } from "../index";
-import { listen } from "@tauri-apps/api/event";
+import { useEvent } from "./UseEvent";
+import { TagListChangedEvent } from "../dto/events";
 
 export function useTags(name: string, auto_update: boolean = false) {
     const [tags, setTags] = useState<TagView[]>([]);
@@ -9,19 +10,11 @@ export function useTags(name: string, auto_update: boolean = false) {
         get_tags_by_name(name).then(setTags);
     }, [name]);
 
-    useEffect(() => {
-        if (!auto_update) {
-            return;
-        }
-        const unlisten = listen("tag_list_changed", () => {
-            console.log("tag_list_changed");
-            get_tags_by_name(name).then(setTags);
+    if (auto_update) {
+        useEvent<TagListChangedEvent>("TagListChanged", (event) => {
+            setTags(event.tags);
         });
-        return () => {
-            unlisten.then(fn => fn());
-        };
-    }, []);
-
+    }
 
     return [tags];
 }

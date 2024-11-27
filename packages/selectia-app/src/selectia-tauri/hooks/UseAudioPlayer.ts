@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { DeckFileView, DeckView } from "../dto/models";
-import { AudioDeckCreatedEvent, AudioDeckUpdatedEvent } from "../dto/events";
+import {
+    AudioDeckCreatedEvent,
+    AudioDeckUpdatedEvent,
+} from "../dto/events";
 import { get_audio_decks } from "../index";
-import { listen } from "@tauri-apps/api/event";
-
+import { useEvent } from "./UseEvent";
 
 export function useAudioPlayer(): [DeckView[]] {
     const [decks, setDecks] = useState<DeckView[]>([]);
@@ -12,17 +14,10 @@ export function useAudioPlayer(): [DeckView[]] {
         get_audio_decks().then(setDecks);
     }, []);
 
-    useEffect(() => {
-        const unlisten = listen("audio-deck-created", (event) => {
-            console.log("audio-deck-created", event);
-            const payload = event.payload as AudioDeckCreatedEvent
-            setDecks(prev => [...prev, { id: payload.id, file: null }]);
-        });
+    useEvent<AudioDeckCreatedEvent>("AudioDeckCreated", (event) => {
+        setDecks((prev) => [...prev, { id: event.id, file: null }]);
+    });
 
-        return () => {
-            unlisten.then(unlisten => unlisten());
-        };
-    }, []);
     return [
         decks,
     ];
@@ -30,21 +25,11 @@ export function useAudioPlayer(): [DeckView[]] {
 
 export function useDeck(deckId: number): [DeckFileView | null] {
     const [file, setFile] = useState<DeckFileView | null>(null);
-    useEffect(() => {
-        const unlisten = listen("audio-deck-updated", (event) => {
-            const payload = event.payload as AudioDeckUpdatedEvent;
-            console.log("audio-deck-updated", payload);
-            console.log("deckId", deckId);
-            if (payload.id === deckId) {
-                setFile(payload.file);
-            }
-        });
-
-        return () => {
-            unlisten.then(unlisten => unlisten());
-        };
-    }, []);
-
+    useEvent<AudioDeckUpdatedEvent>("AudioDeckUpdated", (event) => {
+        if (event.id === deckId) {
+            setFile(event.file);
+        }
+    });
     return [
         file,
     ];

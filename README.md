@@ -65,14 +65,14 @@ Selectia can upscale audio files to improve the playback quality.
 Install the frontend dependencies.
 
 ```bash
-cd selectia-app
+cd packages/selectia-app
 yarn install
 ```
 
 And finally run the app (this will automatically build the Rust part and watch for changes in both the Rust and Typescript parts).
 
 ```bash
-cd selectia-app
+cd packages/selectia-app
 yarn tauri dev
 ```
 

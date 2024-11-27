@@ -3,7 +3,7 @@ use sqlx::{prelude::*, Execute, QueryBuilder};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct EntryView {
-    pub metadata_id: i32,
+    pub metadata_id: i64,
     pub metadata_hash: String,
     pub tags: sqlx::types::Json<Vec<MetadataTagView>>,
 }

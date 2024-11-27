@@ -5,40 +5,31 @@ import {
 } from "../dto/events";
 import { WorkerQueueTask } from "../dto/models";
 import { get_worker_queue_task, get_worker_queue_tasks } from "../index";
-import { listen } from "@tauri-apps/api/event";
+import { useEvent } from "./UseEvent";
 
 export function useWorkerQueueTasks(): [WorkerQueueTask[]] {
     const [tasks, setTasks] = useState<WorkerQueueTask[]>([]);
 
+    useEvent<WorkerQueueTaskCreatedEvent>("WorkerQueueTaskCreated", (event) => {
+        get_worker_queue_task(event.task.id).then((task) => {
+            setTasks((prev) => [...prev, task]);
+        });
+    });
+
+    useEvent<WorkerQueueTaskUpdatedEvent>("WorkerQueueTaskUpdated", (event) => {
+        if (event.task) {
+            setTasks((prev) =>
+                prev.map((t) =>
+                    t.id === event.id ? event.task as WorkerQueueTask : t
+                )
+            );
+        } else {
+            setTasks((prev) => prev.filter((t) => t.id !== event.id));
+        }
+    });
+
     useEffect(() => {
-        const unlisten = listen("worker-queue-task-created", (event) => {
-            const payload = event.payload as WorkerQueueTaskCreatedEvent;
-            console.log(event);
-            get_worker_queue_task(payload.task.id).then((task) => {
-                setTasks((prev) => [...prev, task]);
-            });
-        });
-
-        const unlisten2 = listen("worker-queue-task-updated", (event) => {
-            const payload = event.payload as WorkerQueueTaskUpdatedEvent;
-            if (payload.task) {
-                setTasks((prev) =>
-                    prev.map((t) =>
-                        t.id === payload.id
-                            ? payload.task as WorkerQueueTask
-                            : t
-                    )
-                );
-            } else {
-                setTasks((prev) => prev.filter((t) => t.id !== payload.id));
-            }
-        });
-
         get_worker_queue_tasks().then(setTasks);
-        return () => {
-            unlisten.then((unlisten) => unlisten());
-            unlisten2.then((unlisten2) => unlisten2());
-        };
     }, []);
 
     return [tasks];

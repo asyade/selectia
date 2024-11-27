@@ -29,9 +29,41 @@ pub struct WorkerQueueTaskUpdatedEvent {
 
 #[derive(Serialize, Clone, TS)]
 #[ts(export_to = "events.ts")]
+pub struct TagListChangedEvent {}
+
+#[derive(Serialize, Clone, TS)]
+#[ts(export_to = "events.ts")]
+pub struct EntryListChangedEvent {}
+
+#[derive(Serialize, Clone, TS)]
+#[ts(export_to = "events.ts")]
+pub struct EntryChangedEvent {
+    pub entry: EntryView,
+}
+
+#[derive(Serialize, Clone, TS, From)]
+#[ts(export_to = "events.ts")]
+#[serde(tag = "type")]
 pub enum Events {
     AudioDeckCreated(AudioDeckCreatedEvent),
     AudioDeckUpdated(AudioDeckUpdatedEvent),
     WorkerQueueTaskCreated(WorkerQueueTaskCreatedEvent),
     WorkerQueueTaskUpdated(WorkerQueueTaskUpdatedEvent),
+    TagListChanged(TagListChangedEvent),
+    EntryChanged(EntryChangedEvent),
+    EntryListChanged(EntryListChangedEvent),
+}
+
+impl Events {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Events::AudioDeckCreated(_) => "AudioDeckCreated",
+            Events::AudioDeckUpdated(_) => "AudioDeckUpdated",
+            Events::WorkerQueueTaskCreated(_) => "WorkerQueueTaskCreated",
+            Events::WorkerQueueTaskUpdated(_) => "WorkerQueueTaskUpdated",
+            Events::TagListChanged(_) => "TagListChanged",
+            Events::EntryChanged(_) => "EntryChanged",
+            Events::EntryListChanged(_) => "EntryListChanged",
+        }
+    }
 }
