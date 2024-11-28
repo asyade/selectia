@@ -6,9 +6,11 @@ use std::{
 
 use crate::prelude::*;
 
-use backend::{Backend, BackendHandle};
+use backend::{Backend, BackendHandle, BackendMessage};
 use cpal::traits::{DeviceTrait, HostTrait};
+use dasp::sample;
 pub use deck::*;
+use eyre::OptionExt;
 use futures::executor::block_on;
 mod backend;
 mod deck;
@@ -62,9 +64,51 @@ pub struct AudioPlayer {
 
 #[derive(Clone)]
 pub struct DeckMixer {
-    sources: Arc<RwLock<Vec<SamplesSource>>>,
     next_deck_id: Arc<AtomicU32>,
     decks: Arc<RwLock<BTreeMap<u32, PlayerDeck>>>,
+}
+
+// TODO: put buffer in his own mutex so we can edit source list without blocking the backend thread
+pub struct BufferedSamplesSource<T> {
+    buffer: Vec<T>,
+    provider: SamplesSource,
+}
+
+impl<T> BufferedSamplesSource<T> {
+    pub fn new(provider: SamplesSource) -> Self {
+        Self {
+            buffer: Vec::new(),
+            provider,
+        }
+    }
+
+    pub fn fill_buffer(&mut self, buffer_size: usize, sample_rate: u32, channels: usize) -> &[T]
+    where
+        T: cpal::Sample + cpal::FromSample<f32>,
+    {
+        self.buffer.resize(buffer_size, T::from_sample(0.0));
+        match &mut self.provider {
+            SamplesSource::File(file) => {
+                let file_lock = file.file.blocking_read();
+                let payload = file_lock.payload().unwrap();
+
+                let mut status = file.state.status.blocking_write();
+                match &mut *status {
+                    DeckFileStatus::Playing { offset } => {
+                        for (i, sample) in self.buffer.iter_mut().enumerate() {
+                            *sample = T::from_sample(payload.samples[((*offset + i as u32) % payload.samples.len() as u32) as usize]);
+                        }
+                        *offset = (*offset + self.buffer.len() as u32) % payload.samples.len() as u32;
+                        file.state.updated.store(true, std::sync::atomic::Ordering::Relaxed);
+                    }
+                    _ => {
+                        self.buffer.fill(T::from_sample(0.0));
+                    }
+                }
+            }
+        }
+        &self.buffer 
+    }
 }
 
 pub enum SamplesSource {
@@ -105,7 +149,7 @@ impl AudioPlayer {
             (device, config)
         })
         .await?;
-        let backend = Backend::new(self.dispatcher.clone(), self.decks.clone(), device, config)?;
+        let backend = Backend::new(self.dispatcher.clone(), self.decks.clone(), device, config).await?;
         self.backend.write().await.replace(backend);
         Ok(())
     }
@@ -139,7 +183,10 @@ impl AudioPlayer {
                 metadata_id,
             } => {
                 let file = self.database.get_file_from_metadata_id(metadata_id).await?;
-                self.decks.load_file(deck_id, file.path).await?;
+                let loaded = self.decks.load_file(deck_id, file.path).await?;
+                let backend = self.backend.write().await;
+                let backend = backend.as_ref().ok_or_eyre("Backend not loaded")?;
+                backend.send(BackendMessage::CreateSource(loaded)).await?;
             }
             AudioPlayerTask::SetDeckFileStus {
                 deck_id,
@@ -157,20 +204,19 @@ impl AudioPlayer {
 impl DeckMixer {
     pub fn new() -> Self {
         Self {
-            sources: Arc::new(RwLock::new(Vec::new())),
             next_deck_id: Arc::new(AtomicU32::new(1)),
             decks: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
-    async fn load_file(&self, deck_id: u32, file: String) -> Result<()> {
+    async fn load_file(&self, deck_id: u32, file: String) -> Result<SamplesSource> {
         let deck: PlayerDeck = self.get_deck(deck_id).await?;
         let loaded_file = deck.load_file(file).await?;
-        self.sources
-            .write()
-            .await
-            .push(SamplesSource::File(loaded_file));
-        Ok(())
+        // self.sources
+        //     .write()
+        //     .await
+        //     .push(BufferedSamplesSource::new(SamplesSource::File(loaded_file)));
+        Ok(SamplesSource::File(loaded_file))
     }
 
     async fn create_deck(&self, dispatcher: EventDispatcher<AudioPlayerEvent>) -> Result<u32> {
@@ -203,49 +249,7 @@ impl DeckMixer {
         Ok(self.decks.read().await.clone())
     }
 
-    fn write_data<T>(&self, output: &mut [T], sample_rate: u32, channels: usize)
-    where
-        T: cpal::Sample + cpal::FromSample<f32>,
-    {
-        for frame in output.chunks_mut(channels) {
-            for source in self.sources.blocking_read().iter() {
-                match source {
-                    SamplesSource::File(file) => {
-                        let buffer = file.file.blocking_read();
-                        if let Some(payload) = buffer.payload() {
-                            let written = {
-                                let state = file.state.status.blocking_read();
-                                match *state {
-                                    DeckFileStatus::Playing { offset } => {
-                                        let offset = offset as usize;
-                                        for (i, sample) in frame.iter_mut().enumerate() {
-                                            let index = (offset + i) % payload.samples.len();
-                                            *sample = T::from_sample(payload.samples[index]);
-                                        }
-                                        Some((offset + frame.len()) % payload.samples.len())
-                                    }
-                                    _ => None,
-                                }
-                            };
-
-                            if let Some(offset) = written {
-                                *file.state.status.blocking_write() = DeckFileStatus::Playing {
-                                    offset: offset as u32,
-                                };
-                                file.state.updated.store(true, std::sync::atomic::Ordering::Relaxed);
-                            }
-                        }
-                    }
-                }
-            }
-            for (_, deck) in self.decks.blocking_read().iter() {
-                let file = deck.file.blocking_read();
-                if let Some(file) = file.as_ref() {}
-            }
-        }
-    }
 }
-
 
 impl Task for AudioPlayerTask {}
 
