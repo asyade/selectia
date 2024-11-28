@@ -2,19 +2,20 @@ use crate::prelude::*;
 use audio_player::AudioPlayerEvent;
 use eyre::OptionExt;
 use futures::{channel::oneshot, pin_mut};
-use selectia_audio_file::AudioFile;
+use selectia_audio_file::{audio_file::AudioFilePayload, AudioFile};
 use std::sync::atomic::AtomicU32;
 
 #[derive(Clone)]
 pub struct PlayerDeck {
     id: u32,
-    file: Arc<RwLock<Option<DeckFile>>>,
+    pub file: Arc<RwLock<Option<DeckFile>>>,
     dispatcher: EventDispatcher<AudioPlayerEvent>,
 }
 
+#[derive(Clone)]
 pub struct DeckFile {
-    file: Arc<RwLock<AudioFile>>,
-    state: DeckFileState,
+    pub file: Arc<RwLock<AudioFile>>,
+    pub state: DeckFileState,
 }
 
 #[derive(Clone)]
@@ -22,28 +23,29 @@ pub struct DeckFileState {
     /// The status of the current file.
     /// It is updated by the loader thread at the beginning of the file loading process.
     /// Once loaded, the player thread will update the status.
-    status: Arc<RwLock<DeckFileStatus>>,
-    path: PathBuf,
-}
-
-#[derive(Clone, Debug)]
-pub struct DeckFileStateSnapshot {
-    pub status: DeckFileStatus,
+    pub status: Arc<RwLock<DeckFileStatus>>,
+    pub updated: Arc<AtomicBool>,
     pub path: PathBuf,
 }
 
+#[derive(Clone, Debug)]
+pub struct DeckFileMetadataSnapshot {
+    pub title: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct DeckFilePayloadSnapshot {
+    pub duration: f64,
+    pub sample_rate: u32,
+    pub channels_count: usize,
+    pub samples_count: usize,
+}
 
 #[derive(Clone, Debug)]
 pub enum DeckFileStatus {
-    Loading {
-        progress: u32,
-    },
-    Playing {
-        offset: u32,
-    },
-    Paused {
-        offset: u32,
-    },
+    Loading { progress: u32 },
+    Playing { offset: u32 },
+    Paused { offset: u32 },
 }
 
 impl PlayerDeck {
@@ -55,7 +57,7 @@ impl PlayerDeck {
         }
     }
 
-    pub async fn load_file(&self, path: impl AsRef<Path>) -> eyre::Result<()> {
+    pub async fn load_file(&self, path: impl AsRef<Path>) -> eyre::Result<DeckFile> {
         let file = tokio::fs::File::open(&path).await?;
         let file = Box::new(file.into_std().await);
         let audio_file = AudioFile::from_source(file, &path)?;
@@ -63,22 +65,39 @@ impl PlayerDeck {
         let state = DeckFileState {
             path: path.as_ref().to_path_buf(),
             status: Arc::new(RwLock::new(DeckFileStatus::Loading { progress: 0 })),
+            updated: Arc::new(AtomicBool::new(false)),
         };
 
-        *self.file.write().await = Some(DeckFile {
+        let loaded_file = DeckFile {
             file: Arc::new(RwLock::new(audio_file)),
             state: state.clone(),
-        });
-        self.dispatcher
-            .dispatch(AudioPlayerEvent::DeckFileUpdated { id: self.id, state: DeckFileStateSnapshot::from_state(&state).await })
-            .await?;
+        };
+
+        *self.file.write().await = Some(loaded_file.clone());
+
+        let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFileMetadataUpdated {
+            id: self.id,
+            metadata: DeckFileMetadataSnapshot {
+                title: path.as_ref().to_string_lossy().to_string(),
+            },
+        }).await;
+
         tokio::spawn(self.clone().background_load_file_content());
-        Ok(())
+
+        Ok(loaded_file)
     }
 
     pub async fn set_status(&self, status: DeckFileStatus) -> eyre::Result<()> {
-        let state = self.file.read().await.as_ref().ok_or_eyre("No file loaded")?.state.clone();
+        let state = self
+            .file
+            .read()
+            .await
+            .as_ref()
+            .ok_or_eyre("No file loaded")?
+            .state
+            .clone();
         state.set_status(status).await;
+
         Ok(())
     }
 
@@ -92,34 +111,29 @@ impl PlayerDeck {
     async fn background_load_file_content(self) -> eyre::Result<()> {
         let file = self.get_file().await?;
 
+        let snapshot = 
         tokio::task::spawn_blocking(move || {
             info!("Decoding file");
             let mut lock = file.blocking_write();
-            lock.decode().unwrap();
+            let payload = lock.decode().unwrap();
             info!("File decoded");
+            DeckFilePayloadSnapshot {
+                duration: payload.duration,
+                sample_rate: payload.sample_rate,
+                channels_count: payload.channels.count(),
+                samples_count: payload.samples.len(),
+            }
         })
         .await?;
 
-        let _player_task_handle = tokio::spawn(self.clone().player_task());
-        Ok(())
-    }
+        self.set_status(DeckFileStatus::Playing { offset: 0 })
+            .await?;
 
-    async fn player_task(self) -> eyre::Result<()> {
-        let file = self.get_file().await?;
-        let (sample_rate, channels) = {
-            let mut lock = file.read().await;
-            let sample_rate = lock.sample_rate();
-            let channels = lock.channels();
-            (sample_rate, channels)
-        };
+        let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFilePayloadUpdated {
+            id: self.id,
+            payload: snapshot,
+        }).await;
 
-        let mut timer = tokio::time::interval(std::time::Duration::from_millis(1000));
-
-        loop {
-            timer.tick().await;
-            info!("TICK");
-            info!("{:?}", channels);
-        }
         Ok(())
     }
 }
@@ -127,12 +141,6 @@ impl PlayerDeck {
 impl DeckFileState {
     pub async fn set_status(&self, status: DeckFileStatus) {
         *self.status.write().await = status;
-    }
-}
-
-impl DeckFileStateSnapshot {
-    pub async fn from_state(state: &DeckFileState) -> Self {
-        Self { status: state.status.read().await.clone(), path: state.path.clone() }
     }
 }
 

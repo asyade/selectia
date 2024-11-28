@@ -5,16 +5,21 @@ mod error;
 mod prelude;
 mod spec;
 
-use std::{collections::VecDeque, sync::{mpsc::Sender, Arc, Mutex, RwLock}};
+use std::collections::VecDeque;
+
+use crate::prelude::*;
+use backend::BackendHandle;
 use cpal::SupportedStreamConfig;
 use prelude::*;
 
 pub struct AudioServer {
+    backend: Arc<RwLock<Option<BackendHandle>>>,
     buffer: Arc<RwLock<Option<SharedBuffer>>>,
 }
 
 #[derive(Clone)]
 pub struct SharedBuffer {
+    sender: BufferSender,
     buffer: Arc<Mutex<VecDeque<f32>>>,
     config: Arc<RwLock<SupportedStreamConfig>>,
 }
@@ -22,11 +27,12 @@ pub struct SharedBuffer {
 impl AudioServer {
     pub fn new() -> Self {
         Self {
+            backend: Arc::new(RwLock::new(None)),
             buffer: Arc::new(RwLock::new(None)),
         }
     }
 
-    pub fn get_buffer_channel(&self) -> AudioServerResult<Sender<Vec<f32>>> {
+    pub fn get_buffer_channel(&self) -> AudioServerResult<mpsc::Sender<Vec<f32>>> {
         todo!()
     }
 
@@ -70,7 +76,7 @@ mod tests {
         let host = cpal::default_host();
         let device = host.default_output_device().unwrap();
         let config = device.default_output_config().unwrap();
-        Backend::new(&device, config).unwrap();
+        Backend::new(device, config).unwrap();
     }
 }
 

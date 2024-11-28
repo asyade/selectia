@@ -7,12 +7,18 @@ use std::fs::File;
 
 pub struct AudioFile {
     format: Box<dyn FormatReader>,
-    samples: Option<Vec<f32>>,
     spec: Option<SignalSpec>,
+    decoded: Option<AudioFilePayload>,
+}
+
+pub struct AudioFilePayload {
+    pub duration: f64,
+    pub sample_rate: u32,
+    pub samples: Vec<f32>,
+    pub channels: Channels,
 }
 
 impl AudioFile {
-
     pub fn from_source(source: Box<dyn MediaSource>, path: impl AsRef<Path>) -> AudioFileResult<Self> {
         let mss = MediaSourceStream::new(source, Default::default());
         // Create a hint to help the format registry guess what format reader is appropriate. In this
@@ -35,9 +41,13 @@ impl AudioFile {
 
         Ok(Self {
             format: format,
-            samples: None,
+            decoded: None,
             spec: None,
         })
+    }
+
+    pub fn payload(&self) -> Option<&AudioFilePayload> {
+        self.decoded.as_ref()
     }
 
     /// Open an audio file from a path.
@@ -56,7 +66,8 @@ impl AudioFile {
         self.spec.as_ref().expect("file not loaded").channels
     }
 
-    pub fn decode(&mut self) -> AudioFileResult<()> {
+
+    pub fn decode(&mut self) -> AudioFileResult<&AudioFilePayload> {
         let decoder_opts: DecoderOptions = Default::default();
         // Get the default track.
         let track = self.format.default_track().expect("No default track found");
@@ -119,7 +130,17 @@ impl AudioFile {
             }
         }
         tracing::info!("Decoded {} samples", decoded_samples.len());
-        self.samples = Some(decoded_samples);
-        Ok(())
+
+        let channels_count = self.channels().count();
+        let sample_rate = self.sample_rate();
+        let duration = decoded_samples.len() as f64 / channels_count as f64 / sample_rate as f64;
+
+        self.decoded = Some(AudioFilePayload {
+            duration,
+            sample_rate,
+            channels: self.channels(),
+            samples: decoded_samples,
+        });
+        Ok(self.payload().as_ref().unwrap())
     }
 }

@@ -14,4 +14,3 @@ pub mod ext;
 pub mod analyser;
 
 pub use selectia_audio_file as audio_file;
-pub use selectia_audio_server as audio_server;

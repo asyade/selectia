@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.41", features = ["full"] }
 sqlx = { version = "0.8.2", features = ["sqlite", "runtime-tokio-native-tls"] }
 
 [dependencies]
@@ -26,6 +26,6 @@ nucleo-matcher = { version = "0.3.1" }
 atomic_float = { version = "1.1.0" }
 chrono = { version = "0.4" }
 symphonia = "0.5.4"
+cpal = "0.15"
 
 selectia-audio-file = { path = "../selectia-audio-file" }
-selectia-audio-server = { path = "../selectia-audio-server" }

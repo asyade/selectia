@@ -52,6 +52,16 @@ impl App {
         }
     }
 
+    pub fn emit_identified<T: Into<Events>>(&self, id: u32, event: T) -> eyre::Result<()> {
+        let event: Events = event.into();
+        let handle = self
+            .handle
+            .as_ref()
+            .expect("handle() `App::handle` called before setup");
+        handle.emit(&format!("{}:{}", event.name(), id), event)?;
+        Ok(())
+    }
+
     pub fn emit<T: Into<Events>>(&self, event: T) -> eyre::Result<()> {
         let event: Events = event.into();
         let handle = self
@@ -97,15 +107,19 @@ impl App {
         let app_handle = self.clone();
         self.audio_player
             .register_channel(channel_iterator(move |msg| {
-                info!("audio_player_event: {:?}", &msg);
                 match msg {
                     AudioPlayerEvent::DeckCreated { id } => {
                         let _ = app_handle.emit(dto::AudioDeckCreatedEvent { id });
-                    }
-                    AudioPlayerEvent::DeckFileUpdated { id, state } => {
-                        let file = Some(dto::DeckFileView::from(state));
-                        let _ = app_handle.emit(dto::AudioDeckUpdatedEvent { id, file });
-                    }
+                    },
+                    AudioPlayerEvent::DeckFileMetadataUpdated { id, metadata } => {
+                        let _ = app_handle.emit_identified(id, dto::AudioDeckFileMetadataUpdatedEvent { id, metadata: metadata.into() });
+                    },
+                    AudioPlayerEvent::DeckFilePayloadUpdated { id, payload } => {
+                        let _ = app_handle.emit_identified(id, dto::AudioDeckFilePayloadUpdatedEvent { id, payload: payload.into() });
+                    },
+                    AudioPlayerEvent::DeckFileStatusUpdated { id, status } => {
+                        let _ = app_handle.emit_identified(id, dto::AudioDeckFileStatusUpdatedEvent { id, status: status.into() });
+                    },
                 }
             }))
             .await;

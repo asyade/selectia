@@ -6,11 +6,26 @@ pub struct AudioDeckCreatedEvent {
     pub id: u32,
 }
 
+
 #[derive(Serialize, Clone, TS)]
 #[ts(export_to = "events.ts")]
-pub struct AudioDeckUpdatedEvent {
+pub struct AudioDeckFileMetadataUpdatedEvent {
     pub id: u32,
-    pub file: Option<DeckFileView>,
+    pub metadata: DeckFileMetadataSnapshot,
+}
+
+#[derive(Serialize, Clone, TS)]
+#[ts(export_to = "events.ts")]
+pub struct AudioDeckFilePayloadUpdatedEvent {
+    pub id: u32,
+    pub payload: DeckFilePayloadSnapshot,
+}
+
+#[derive(Serialize, Clone, TS)]
+#[ts(export_to = "events.ts")]
+pub struct AudioDeckFileStatusUpdatedEvent {
+    pub id: u32,
+    pub status: DeckFileStatus,
 }
 
 #[derive(Serialize, Clone, TS)]
@@ -44,8 +59,10 @@ pub struct EntryChangedEvent {
 #[ts(export_to = "events.ts")]
 #[serde(tag = "type")]
 pub enum Events {
+    AudioDeckFileMetadataUpdated(AudioDeckFileMetadataUpdatedEvent),
+    AudioDeckFilePayloadUpdated(AudioDeckFilePayloadUpdatedEvent),
+    AudioDeckFileStatusUpdated(AudioDeckFileStatusUpdatedEvent),
     AudioDeckCreated(AudioDeckCreatedEvent),
-    AudioDeckUpdated(AudioDeckUpdatedEvent),
     WorkerQueueTaskCreated(WorkerQueueTaskCreatedEvent),
     WorkerQueueTaskUpdated(WorkerQueueTaskUpdatedEvent),
     TagListChanged(TagListChangedEvent),
@@ -56,8 +73,10 @@ pub enum Events {
 impl Events {
     pub fn name(&self) -> &'static str {
         match self {
+            Events::AudioDeckFileMetadataUpdated(_) => "AudioDeckFileMetadataUpdated",
+            Events::AudioDeckFilePayloadUpdated(_) => "AudioDeckFilePayloadUpdated",
+            Events::AudioDeckFileStatusUpdated(_) => "AudioDeckFileStatusUpdated",
             Events::AudioDeckCreated(_) => "AudioDeckCreated",
-            Events::AudioDeckUpdated(_) => "AudioDeckUpdated",
             Events::WorkerQueueTaskCreated(_) => "WorkerQueueTaskCreated",
             Events::WorkerQueueTaskUpdated(_) => "WorkerQueueTaskUpdated",
             Events::TagListChanged(_) => "TagListChanged",

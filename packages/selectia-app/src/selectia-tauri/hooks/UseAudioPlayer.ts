@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { DeckFileView, DeckView } from "../dto/models";
+import { DeckFileMetadataSnapshot, DeckFilePayloadSnapshot, DeckFileStatus, DeckFileView, DeckView } from "../dto/models";
 import {
     AudioDeckCreatedEvent,
-    AudioDeckUpdatedEvent,
+    AudioDeckFileMetadataUpdatedEvent,
+    AudioDeckFilePayloadUpdatedEvent,
+    AudioDeckFileStatusUpdatedEvent,
 } from "../dto/events";
 import { get_audio_decks } from "../index";
-import { useEvent } from "./UseEvent";
+import { useEvent, useIdentifiedEvent } from "./UseEvent";
 
 export function useAudioPlayer(): [DeckView[]] {
     const [decks, setDecks] = useState<DeckView[]>([]);
@@ -23,14 +25,30 @@ export function useAudioPlayer(): [DeckView[]] {
     ];
 }
 
-export function useDeck(deckId: number): [DeckFileView | null] {
-    const [file, setFile] = useState<DeckFileView | null>(null);
-    useEvent<AudioDeckUpdatedEvent>("AudioDeckUpdated", (event) => {
-        if (event.id === deckId) {
-            setFile(event.file);
-        }
+
+
+export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckFilePayloadSnapshot | null, DeckFileStatus | null] {
+    const [metadata, setMetadata] = useState<DeckFileMetadataSnapshot | null>(null);
+    const [payload, setPayload] = useState<DeckFilePayloadSnapshot | null>(null);
+    const [status, setStatus] = useState<DeckFileStatus | null>(null);
+
+    useIdentifiedEvent<AudioDeckFileMetadataUpdatedEvent>(`AudioDeckFileMetadataUpdated`, deckId, (event) => {
+        setMetadata(event.metadata);
+        setPayload(null);
+        setStatus(null);
     });
+
+    useIdentifiedEvent<AudioDeckFilePayloadUpdatedEvent>(`AudioDeckFilePayloadUpdated`, deckId, (event) => {
+        setPayload(event.payload);
+    });
+
+    useIdentifiedEvent<AudioDeckFileStatusUpdatedEvent>(`AudioDeckFileStatusUpdated`, deckId, (event) => {
+        setStatus(event.status);
+    });
+
     return [
-        file,
+        metadata,
+        payload,
+        status,
     ];
 }

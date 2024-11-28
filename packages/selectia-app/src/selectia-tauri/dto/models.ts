@@ -4,9 +4,13 @@ export type AppError = { message: string, id: number, };
 
 export type ContextId = bigint;
 
+export type DeckFileMetadataSnapshot = { title: string, };
+
+export type DeckFilePayloadSnapshot = { duration: number, sample_rate: number, channels_count: number, samples_count: number, };
+
 export type DeckFileStatus = { "kind": "Loading", progress: number, } | { "kind": "Playing", offset: number, } | { "kind": "Paused", offset: number, };
 
-export type DeckFileView = { title: string, length: number, status: DeckFileStatus, };
+export type DeckFileView = { metadata: DeckFileMetadataSnapshot, payload: DeckFilePayloadSnapshot, status: DeckFileStatus, };
 
 export type DeckView = { file: DeckFileView | null, id: number, };
 
@@ -16,7 +20,7 @@ export type FilterSelection = { directories: Array<string>, tags: { [key in numb
 
 export type MetadataTagView = { tag_id: bigint, metadata_tag_id: bigint, tag_name_id: bigint, tag_value: string, metadata_id: bigint, };
 
-export type Models = { "AppError": AppError } | { "ContextId": ContextId } | { "WorkerQueueTask": WorkerQueueTask } | { "TaskStatus": TaskStatus } | { "DeckView": DeckView } | { "DeckFileView": DeckFileView } | { "TagSelection": TagSelection } | { "FilterSelection": FilterSelection } | { "EntryView": EntryView } | { "MetadataTagView": MetadataTagView } | { "TagName": TagName } | { "TagView": TagView };
+export type Models = { "DeckFileMetadataSnapshot": DeckFileMetadataSnapshot } | { "DeckFilePayloadSnapshot": DeckFilePayloadSnapshot } | { "DeckFileStatus": DeckFileStatus } | { "AppError": AppError } | { "ContextId": ContextId } | { "WorkerQueueTask": WorkerQueueTask } | { "TaskStatus": TaskStatus } | { "DeckView": DeckView } | { "DeckFileView": DeckFileView } | { "TagSelection": TagSelection } | { "FilterSelection": FilterSelection } | { "EntryView": EntryView } | { "MetadataTagView": MetadataTagView } | { "TagName": TagName } | { "TagView": TagView };
 
 export type TagName = { id: bigint, name: string, use_for_filtering: boolean, };
 

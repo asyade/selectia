@@ -55,9 +55,24 @@ pub enum DeckFileStatus {
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
 pub struct DeckFileView {
-    pub title: String,
-    pub length: u32,
+    pub metadata: DeckFileMetadataSnapshot,
+    pub payload: DeckFilePayloadSnapshot,
     pub status: DeckFileStatus,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct DeckFileMetadataSnapshot {
+    pub title: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct DeckFilePayloadSnapshot {
+    pub duration: f64,
+    pub sample_rate: u32,
+    pub channels_count: usize,
+    pub samples_count: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, TS)]
@@ -112,6 +127,9 @@ pub struct TagView {
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
 pub enum Models {
+    DeckFileMetadataSnapshot(DeckFileMetadataSnapshot),
+    DeckFilePayloadSnapshot(DeckFilePayloadSnapshot),
+    DeckFileStatus(DeckFileStatus),
     AppError(AppError),
     ContextId(ContextId),
     WorkerQueueTask(WorkerQueueTask),
@@ -162,8 +180,15 @@ impl From<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
     }
 }
 
-impl From<selectia::services::audio_player::DeckFileStateSnapshot> for DeckFileView {
-    fn from(state: selectia::services::audio_player::DeckFileStateSnapshot) -> Self {
-        DeckFileView { title: state.path.to_string_lossy().to_string(), length: 0, status: state.status.into() }
+
+impl From<selectia::services::audio_player::DeckFilePayloadSnapshot> for DeckFilePayloadSnapshot {
+    fn from(payload: selectia::services::audio_player::DeckFilePayloadSnapshot) -> Self {
+        DeckFilePayloadSnapshot { duration: payload.duration, sample_rate: payload.sample_rate, channels_count: payload.channels_count, samples_count: payload.samples_count }
+    }
+}
+
+impl From<selectia::services::audio_player::DeckFileMetadataSnapshot> for DeckFileMetadataSnapshot {
+    fn from(metadata: selectia::services::audio_player::DeckFileMetadataSnapshot) -> Self {
+        DeckFileMetadataSnapshot { title: metadata.title }
     }
 }

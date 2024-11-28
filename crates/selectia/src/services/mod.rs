@@ -11,7 +11,6 @@ pub use addresable_service_with_dispatcher::{dispatcher::*, AddressableServiceWi
 pub use threaded_service::*;
 
 pub mod audio_player;
-pub mod audio_server;
 pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
@@ -200,6 +199,12 @@ mod addresable_service_with_dispatcher {
                 self.dispatcher
                     .send(event)
                     .await
+                    .map_err(|_| eyre!("Failed to send event to dispatcher"))
+            }
+
+            pub fn dispatch_blocking(&self, event: T) -> Result<()> {
+                self.dispatcher
+                    .blocking_send(event)
                     .map_err(|_| eyre!("Failed to send event to dispatcher"))
             }
 
