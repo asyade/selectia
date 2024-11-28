@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { DeckFileMetadataSnapshot, DeckFilePayloadSnapshot, DeckFileStatus, DeckFileView, DeckView } from "../dto/models";
+import { DeckFileMetadataSnapshot, DeckFilePayloadSnapshot, DeckFileStatus, DeckView } from "../dto/models";
 import {
     AudioDeckCreatedEvent,
     AudioDeckFileMetadataUpdatedEvent,

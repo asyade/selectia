@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    DeckFileMetadataSnapshot,
     DeckFilePayloadSnapshot,
     DeckFilePreview,
     DeckFileStatus,
@@ -96,7 +95,7 @@ function TrackView(
         }
     };
 
-    const resizeObserver = new ResizeObserver((entries) => {
+    const resizeObserver = new ResizeObserver((_entries) => {
         handleResize();
     });
 

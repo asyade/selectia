@@ -90,24 +90,35 @@ impl<T> BufferedSamplesSource<T> {
         match &mut self.provider {
             SamplesSource::File(file) => {
                 let file_lock = file.file.blocking_read();
-                let payload = file_lock.payload().unwrap();
+                let payload = file_lock.payload();
 
-                let mut status = file.state.status.blocking_write();
-                match &mut *status {
-                    DeckFileStatus::Playing { offset } => {
-                        for (i, sample) in self.buffer.iter_mut().enumerate() {
-                            *sample = T::from_sample(payload.samples[((*offset + i as u32) % payload.samples.len() as u32) as usize]);
+                if let Some(payload) = payload {
+                    let mut status = file.state.status.blocking_write();
+                    match &mut *status {
+                        DeckFileStatus::Playing { offset } => {
+                            for (i, sample) in self.buffer.iter_mut().enumerate() {
+                                *sample = T::from_sample(
+                                    payload.samples[((*offset + i as u32)
+                                        % payload.samples.len() as u32)
+                                        as usize],
+                                );
+                            }
+                            *offset =
+                                (*offset + self.buffer.len() as u32) % payload.samples.len() as u32;
+                            file.state
+                                .updated
+                                .store(true, std::sync::atomic::Ordering::Relaxed);
                         }
-                        *offset = (*offset + self.buffer.len() as u32) % payload.samples.len() as u32;
-                        file.state.updated.store(true, std::sync::atomic::Ordering::Relaxed);
+                        _ => {
+                            self.buffer.fill(T::from_sample(0.0));
+                        }
                     }
-                    _ => {
-                        self.buffer.fill(T::from_sample(0.0));
-                    }
+                } else {
+                    self.buffer.fill(T::from_sample(0.0));
                 }
             }
         }
-        &self.buffer 
+        &self.buffer
     }
 }
 
@@ -149,7 +160,8 @@ impl AudioPlayer {
             (device, config)
         })
         .await?;
-        let backend = Backend::new(self.dispatcher.clone(), self.decks.clone(), device, config).await?;
+        let backend =
+            Backend::new(self.dispatcher.clone(), self.decks.clone(), device, config).await?;
         self.backend.write().await.replace(backend);
         Ok(())
     }
@@ -248,7 +260,6 @@ impl DeckMixer {
     async fn get_all_decks(&self) -> Result<BTreeMap<u32, PlayerDeck>> {
         Ok(self.decks.read().await.clone())
     }
-
 }
 
 impl Task for AudioPlayerTask {}
