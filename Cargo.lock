@@ -4064,6 +4064,7 @@ dependencies = [
 name = "selectia-audio-file"
 version = "0.1.0"
 dependencies = [
+ "dasp",
  "symphonia",
  "thiserror 2.0.3",
  "tracing",

@@ -39,6 +39,14 @@ pub struct DeckFilePayloadSnapshot {
     pub sample_rate: u32,
     pub channels_count: usize,
     pub samples_count: usize,
+    pub preview: DeckFilePreview,
+}
+
+#[derive(Clone, Debug)]
+pub struct DeckFilePreview {
+    pub sample_rate: u32,
+    pub channels_count: usize,
+    pub samples: Vec<f32>,
 }
 
 #[derive(Clone, Debug)]
@@ -119,12 +127,18 @@ impl PlayerDeck {
             info!("Decoding file");
             let mut lock = file.blocking_write();
             let payload = lock.decode().unwrap();
+            let preview = payload.downsampled(None, 60).unwrap();
             info!("File decoded");
             DeckFilePayloadSnapshot {
                 duration: payload.duration,
                 sample_rate: payload.sample_rate,
                 channels_count: payload.channels.count(),
                 samples_count: payload.samples.len(),
+                preview: DeckFilePreview {
+                    sample_rate: preview.sample_rate,
+                    channels_count: preview.channels.count(),
+                    samples: preview.samples,
+                },
             }
         })
         .await?;

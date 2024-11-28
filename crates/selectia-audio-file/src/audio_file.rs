@@ -1,9 +1,12 @@
+use dasp::signal::interpolate::Converter;
+use dasp::Signal;
 use symphonia::core::audio::{Channels, SignalSpec};
 use symphonia::core::formats::{FormatReader, Track};
 use symphonia::core::io::MediaSource;
 
 use crate::prelude::*;
 use std::fs::File;
+use std::ops::Range;
 
 pub struct AudioFile {
     format: Box<dyn FormatReader>,
@@ -142,5 +145,23 @@ impl AudioFile {
             samples: decoded_samples,
         });
         Ok(self.payload().as_ref().unwrap())
+    }
+}
+
+impl AudioFilePayload {
+    pub fn downsampled(&self, range: Option<Range<usize>>, divider: usize) -> AudioFileResult<AudioFilePayload> {
+        let range = range.unwrap_or(0..self.samples.len());
+        let input_signal = dasp::signal::from_iter(self.samples[range].iter().copied());
+
+        let buffer = dasp::ring_buffer::Fixed::from(vec![0.0; divider * 2]);
+        let downsampled_signal = input_signal.scale_hz(dasp::interpolate::sinc::Sinc::new(buffer), divider as f64);
+
+        let downsampled_samples: Vec<f32> = downsampled_signal.take(self.samples.len() / divider).collect();
+        Ok(AudioFilePayload {
+            duration: self.duration / divider as f64,
+            sample_rate: self.sample_rate / divider as u32,
+            channels: self.channels,
+            samples: downsampled_samples,
+        })
     }
 }

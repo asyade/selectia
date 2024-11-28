@@ -73,6 +73,15 @@ pub struct DeckFilePayloadSnapshot {
     pub sample_rate: u32,
     pub channels_count: usize,
     pub samples_count: usize,
+    pub preview: DeckFilePreview,
+}
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct DeckFilePreview {
+    pub sample_rate: u32,
+    pub channels_count: usize,
+    pub samples: Vec<f32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, TS)]
@@ -192,7 +201,7 @@ impl Into<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
 
 impl From<selectia::services::audio_player::DeckFilePayloadSnapshot> for DeckFilePayloadSnapshot {
     fn from(payload: selectia::services::audio_player::DeckFilePayloadSnapshot) -> Self {
-        DeckFilePayloadSnapshot { duration: payload.duration, sample_rate: payload.sample_rate, channels_count: payload.channels_count, samples_count: payload.samples_count }
+        DeckFilePayloadSnapshot { duration: payload.duration, sample_rate: payload.sample_rate, channels_count: payload.channels_count, samples_count: payload.samples_count, preview: payload.preview.into() }
     }
 }
 
@@ -202,4 +211,9 @@ impl From<selectia::services::audio_player::DeckFileMetadataSnapshot> for DeckFi
     }
 }
 
+impl From<selectia::services::audio_player::DeckFilePreview> for DeckFilePreview {
+    fn from(preview: selectia::services::audio_player::DeckFilePreview) -> Self {
+        DeckFilePreview { sample_rate: preview.sample_rate, channels_count: preview.channels_count, samples: preview.samples }
+    }
+}
 

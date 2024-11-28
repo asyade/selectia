@@ -7,3 +7,4 @@ edition = "2021"
 symphonia = "0.5.4"
 thiserror = "2"
 tracing = "0.1"
+dasp = { version = "0.11.0", features = ["all"] }

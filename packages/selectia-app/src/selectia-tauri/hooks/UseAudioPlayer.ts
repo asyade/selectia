@@ -40,7 +40,7 @@ export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckF
             .catch((error) => {
                 console.error(error);
             });
-    }, [deckId]);
+    }, [deckId, setStatus]);
 
     useIdentifiedEvent<AudioDeckFileMetadataUpdatedEvent>(`AudioDeckFileMetadataUpdated`, deckId, (event) => {
         setMetadata(event.metadata);

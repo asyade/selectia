@@ -182,7 +182,7 @@ fn write_data<T>(
             let source_signal = signal::from_iter(source.buffer.chunks(2).map(|e| [e[0], e[1]]));
             let mixed_signal = base_signal.add_amp(source_signal);
 
-            /// TODO: Use ring buffer here
+            // TODO: Use ring buffer here
             let collected: Vec<_> = mixed_signal.take(output.len() / 2).flatten().collect();
             output.copy_from_slice(&collected);
         }

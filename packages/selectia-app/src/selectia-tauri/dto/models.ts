@@ -6,7 +6,9 @@ export type ContextId = bigint;
 
 export type DeckFileMetadataSnapshot = { title: string, };
 
-export type DeckFilePayloadSnapshot = { duration: number, sample_rate: number, channels_count: number, samples_count: number, };
+export type DeckFilePayloadSnapshot = { duration: number, sample_rate: number, channels_count: number, samples_count: number, preview: DeckFilePreview, };
+
+export type DeckFilePreview = { sample_rate: number, channels_count: number, samples: Array<number>, };
 
 export type DeckFileStatus = { "kind": "Loading", progress: number, } | { "kind": "Playing", offset: number, } | { "kind": "Paused", offset: number, };
 
