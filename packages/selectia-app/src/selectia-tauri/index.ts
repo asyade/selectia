@@ -8,7 +8,7 @@ export const TAG_NAME_ID_ALBUM = BigInt(6);
 export const TAG_NAME_ID_GENRE = BigInt(7);
 
 import { invoke } from "@tauri-apps/api/core";
-import { ContextId, FilterSelection, EntryView, TagView, TagName, WorkerQueueTask, DeckView } from "./dto/models";
+import { ContextId, FilterSelection, EntryView, TagView, TagName, WorkerQueueTask, DeckView, DeckFileStatus } from "./dto/models";
 
 export async function interactive_list_create_context(): Promise<bigint> {
     return await invoke("interactive_list_create_context").then((x: any) => x as bigint);
@@ -61,6 +61,11 @@ export async function get_audio_decks(): Promise<DeckView[]> {
 export async function load_audio_track(deckId: bigint, metadataId: bigint) {
     return await invoke("load_audio_track", { deckId, metadataId });
 }
+
+export async function set_deck_file_status(deckId: number, status: DeckFileStatus) {
+    return await invoke("set_deck_file_status", { deckId, status });
+}
+
 
 export class EntryViewCursor {
     entry: EntryView;

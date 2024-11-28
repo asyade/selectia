@@ -29,8 +29,9 @@ pub enum AudioPlayerTask {
     },
     SetDeckFileStus {
         deck_id: u32,
-        status: DeckFileStatus
-    }
+        status: DeckFileStatus,
+        callback: TaskCallback<()>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -143,8 +144,10 @@ impl AudioPlayer {
             AudioPlayerTask::SetDeckFileStus {
                 deck_id,
                 status,
+                callback,
             } => {
                 self.decks.set_deck_file_status(deck_id, status).await?;
+                let _ = callback.resolve(()).await?;
             }
         }
         Ok(())

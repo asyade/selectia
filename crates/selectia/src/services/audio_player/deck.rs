@@ -96,8 +96,11 @@ impl PlayerDeck {
             .ok_or_eyre("No file loaded")?
             .state
             .clone();
-        state.set_status(status).await;
-
+        state.set_status(status.clone()).await;
+        self.dispatcher.dispatch(AudioPlayerEvent::DeckFileStatusUpdated {
+            id: self.id,
+            status,
+        }).await?;
         Ok(())
     }
 
@@ -125,15 +128,12 @@ impl PlayerDeck {
             }
         })
         .await?;
-
-        self.set_status(DeckFileStatus::Playing { offset: 0 })
-            .await?;
-
         let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFilePayloadUpdated {
             id: self.id,
             payload: snapshot,
         }).await;
-
+        self.set_status(DeckFileStatus::Paused { offset: 0 })
+            .await?;
         Ok(())
     }
 }

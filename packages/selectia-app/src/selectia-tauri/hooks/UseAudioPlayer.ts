@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DeckFileMetadataSnapshot, DeckFilePayloadSnapshot, DeckFileStatus, DeckFileView, DeckView } from "../dto/models";
 import {
     AudioDeckCreatedEvent,
@@ -6,7 +6,7 @@ import {
     AudioDeckFilePayloadUpdatedEvent,
     AudioDeckFileStatusUpdatedEvent,
 } from "../dto/events";
-import { get_audio_decks } from "../index";
+import { get_audio_decks, set_deck_file_status } from "../index";
 import { useEvent, useIdentifiedEvent } from "./UseEvent";
 
 export function useAudioPlayer(): [DeckView[]] {
@@ -27,10 +27,20 @@ export function useAudioPlayer(): [DeckView[]] {
 
 
 
-export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckFilePayloadSnapshot | null, DeckFileStatus | null] {
+export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckFilePayloadSnapshot | null, DeckFileStatus | null, (status: DeckFileStatus) => void] {
     const [metadata, setMetadata] = useState<DeckFileMetadataSnapshot | null>(null);
     const [payload, setPayload] = useState<DeckFilePayloadSnapshot | null>(null);
     const [status, setStatus] = useState<DeckFileStatus | null>(null);
+
+    const setStatusDetached = useCallback((status: DeckFileStatus) => {
+        set_deck_file_status(deckId, status)
+            .then(() => {
+                console.log("status set");
+            })
+            .catch((error) => {
+                console.error(error);
+            });
+    }, [deckId]);
 
     useIdentifiedEvent<AudioDeckFileMetadataUpdatedEvent>(`AudioDeckFileMetadataUpdated`, deckId, (event) => {
         setMetadata(event.metadata);
@@ -50,5 +60,6 @@ export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckF
         metadata,
         payload,
         status,
+        setStatusDetached,
     ];
 }

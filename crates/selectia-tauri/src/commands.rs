@@ -184,3 +184,24 @@ pub async fn load_audio_track<'a>(
         .await?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn set_deck_file_status<'a>(
+    deck_id: u32,
+    status: dto::DeckFileStatus,
+    app: AppArg<'a>,
+) -> AppResult<()> {
+    let (callback, receiver) = TaskCallback::new();
+    app.write()
+        .await
+        .audio_player
+        .send(AudioPlayerTask::SetDeckFileStus {
+            deck_id,
+            status: status.into(),
+            callback,
+        })
+        .await?;
+    receiver.wait().await.unwrap();
+    Ok(())
+}
+

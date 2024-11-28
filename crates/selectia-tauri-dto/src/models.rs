@@ -180,6 +180,15 @@ impl From<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
     }
 }
 
+impl Into<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
+    fn into(self) -> selectia::services::audio_player::DeckFileStatus {
+        match self {
+            DeckFileStatus::Loading { progress } => selectia::services::audio_player::DeckFileStatus::Loading { progress },
+            DeckFileStatus::Playing { offset } => selectia::services::audio_player::DeckFileStatus::Playing { offset },
+            DeckFileStatus::Paused { offset } => selectia::services::audio_player::DeckFileStatus::Paused { offset },
+        }
+    }
+}
 
 impl From<selectia::services::audio_player::DeckFilePayloadSnapshot> for DeckFilePayloadSnapshot {
     fn from(payload: selectia::services::audio_player::DeckFilePayloadSnapshot) -> Self {
@@ -192,3 +201,5 @@ impl From<selectia::services::audio_player::DeckFileMetadataSnapshot> for DeckFi
         DeckFileMetadataSnapshot { title: metadata.title }
     }
 }
+
+

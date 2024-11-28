@@ -34,6 +34,7 @@ pub async fn run() {
             create_audio_deck,
             get_audio_decks,
             load_audio_track,
+            set_deck_file_status,
         ])
         .setup(setup)
         .run(tauri::generate_context!())
