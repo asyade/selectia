@@ -12,10 +12,19 @@ pub struct PlayerDeck {
     dispatcher: EventDispatcher<AudioPlayerEvent>,
 }
 
+#[derive(Clone, Debug)]
+pub struct DeckSnapshot {
+    pub id: u32,
+    pub metadata: Option<DeckFileMetadataSnapshot>,
+    pub payload: Option<DeckFilePayloadSnapshot>,
+    pub status: DeckFileStatus,
+}
+
 #[derive(Clone)]
 pub struct DeckFile {
     pub file: Arc<RwLock<AudioFile>>,
     pub state: DeckFileState,
+    pub metadata: DeckFileMetadataSnapshot,
 }
 
 #[derive(Clone)]
@@ -39,7 +48,7 @@ pub struct DeckFilePayloadSnapshot {
     pub sample_rate: u32,
     pub channels_count: usize,
     pub samples_count: usize,
-    pub preview: DeckFilePreview,
+    pub preview: Option<DeckFilePreview>,
 }
 
 #[derive(Clone, Debug)]
@@ -70,6 +79,11 @@ impl PlayerDeck {
         let file = Box::new(file.into_std().await);
         let audio_file = AudioFile::from_source(file, &path)?;
 
+
+        let metadata =DeckFileMetadataSnapshot {
+            title: path.as_ref().to_string_lossy().to_string(),
+        };
+
         let state = DeckFileState {
             path: path.as_ref().to_path_buf(),
             status: Arc::new(RwLock::new(DeckFileStatus::Loading { progress: 0 })),
@@ -79,15 +93,14 @@ impl PlayerDeck {
         let loaded_file = DeckFile {
             file: Arc::new(RwLock::new(audio_file)),
             state: state.clone(),
+            metadata: metadata.clone(),
         };
 
         *self.file.write().await = Some(loaded_file.clone());
 
         let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFileMetadataUpdated {
             id: self.id,
-            metadata: DeckFileMetadataSnapshot {
-                title: path.as_ref().to_string_lossy().to_string(),
-            },
+            metadata,
         }).await;
 
         tokio::spawn(self.clone().background_load_file_content());
@@ -126,20 +139,11 @@ impl PlayerDeck {
         tokio::task::spawn_blocking(move || {
             info!("Decoding file");
             let mut lock = file.blocking_write();
-            let payload = lock.decode().unwrap();
-            let preview = payload.downsampled(None, 60).unwrap();
-            info!("File decoded");
-            DeckFilePayloadSnapshot {
-                duration: payload.duration,
-                sample_rate: payload.sample_rate,
-                channels_count: payload.channels.count(),
-                samples_count: payload.samples.len(),
-                preview: DeckFilePreview {
-                    sample_rate: preview.sample_rate,
-                    channels_count: preview.channels.count(),
-                    samples: preview.samples,
-                },
-            }
+            let _ = lock.decode().unwrap();
+            let _ = lock.generate_preview();
+            let preview = lock.preview();
+            let payload = lock.payload().unwrap();
+            DeckFilePayloadSnapshot::new(payload, preview)
         })
         .await?;
         let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFilePayloadUpdated {
@@ -149,6 +153,22 @@ impl PlayerDeck {
         self.set_status(DeckFileStatus::Paused { offset: 0 })
             .await?;
         Ok(())
+    }
+}
+
+impl DeckFilePayloadSnapshot {
+    pub fn new(payload: &AudioFilePayload, preview: Option<&AudioFilePayload>) -> Self {
+        Self {
+            duration: payload.duration,
+            sample_rate: payload.sample_rate,
+            channels_count: payload.channels.count(),
+            samples_count: payload.samples.len(),
+            preview: preview.map(|preview| DeckFilePreview {
+                sample_rate: preview.sample_rate,
+                channels_count: preview.channels.count(),
+                samples: preview.samples.clone(),
+            }),
+        }
     }
 }
 

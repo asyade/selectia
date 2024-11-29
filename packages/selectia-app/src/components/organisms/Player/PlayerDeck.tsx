@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+    DeckFileMetadataSnapshot,
     DeckFilePayloadSnapshot,
     DeckFilePreview,
     DeckFileStatus,
@@ -13,9 +14,12 @@ import { Button } from "../../atoms/Button";
 export function PlayerDeck(
     props: {
         deckId: number;
+        status: DeckFileStatus | null;
+        metadata: DeckFileMetadataSnapshot | null;
+        payload: DeckFilePayloadSnapshot | null;
     },
 ) {
-    const [metadata, payload, status, setStatus] = useDeck(props.deckId);
+    const [metadata, payload, status, setStatus] = useDeck(props.deckId, props.status, props.metadata, props.payload);
 
     const [statusKind, setStatusKind] = useState<DeckFileStatus["kind"] | null>(
         null,

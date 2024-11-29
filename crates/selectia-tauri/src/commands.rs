@@ -164,7 +164,14 @@ pub async fn get_audio_decks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::DeckView
     let decks = receiver.wait().await.unwrap();
     Ok(decks
         .into_iter()
-        .map(|(id, _deck)| dto::DeckView { id, file: None })
+        .map(|(id, deck)| {
+            let file = dto::DeckFileView {
+                metadata: deck.metadata.map(|m| m.into()),
+                payload: deck.payload.map(|p| p.into()),
+                status: deck.status.into(),
+            };
+            dto::DeckView { id, file: Some(file) }
+        })
         .collect())
 }
 

@@ -27,10 +27,10 @@ export function useAudioPlayer(): [DeckView[]] {
 
 
 
-export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckFilePayloadSnapshot | null, DeckFileStatus | null, (status: DeckFileStatus) => void] {
-    const [metadata, setMetadata] = useState<DeckFileMetadataSnapshot | null>(null);
-    const [payload, setPayload] = useState<DeckFilePayloadSnapshot | null>(null);
-    const [status, setStatus] = useState<DeckFileStatus | null>(null);
+export function useDeck(deckId: number, initialStatus: DeckFileStatus | null = null, initialMetadata: DeckFileMetadataSnapshot | null = null, initialPayload: DeckFilePayloadSnapshot | null = null): [DeckFileMetadataSnapshot | null, DeckFilePayloadSnapshot | null, DeckFileStatus | null, (status: DeckFileStatus) => void] {
+    const [metadata, setMetadata] = useState<DeckFileMetadataSnapshot | null>(initialMetadata);
+    const [payload, setPayload] = useState<DeckFilePayloadSnapshot | null>(initialPayload);
+    const [status, setStatus] = useState<DeckFileStatus | null>(initialStatus);
 
     const setStatusDetached = useCallback((status: DeckFileStatus) => {
         set_deck_file_status(deckId, status)
@@ -55,6 +55,10 @@ export function useDeck(deckId: number): [DeckFileMetadataSnapshot | null, DeckF
     useIdentifiedEvent<AudioDeckFileStatusUpdatedEvent>(`AudioDeckFileStatusUpdated`, deckId, (event) => {
         setStatus(event.status);
     });
+
+    useEffect(() => {
+
+    }, [status]);
 
     return [
         metadata,

@@ -55,8 +55,8 @@ pub enum DeckFileStatus {
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
 pub struct DeckFileView {
-    pub metadata: DeckFileMetadataSnapshot,
-    pub payload: DeckFilePayloadSnapshot,
+    pub metadata: Option<DeckFileMetadataSnapshot>,
+    pub payload: Option<DeckFilePayloadSnapshot>,
     pub status: DeckFileStatus,
 }
 
@@ -73,7 +73,7 @@ pub struct DeckFilePayloadSnapshot {
     pub sample_rate: u32,
     pub channels_count: usize,
     pub samples_count: usize,
-    pub preview: DeckFilePreview,
+    pub preview: Option<DeckFilePreview>,
 }
 
 #[derive(Serialize, Deserialize, Clone, TS)]
@@ -201,7 +201,7 @@ impl Into<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
 
 impl From<selectia::services::audio_player::DeckFilePayloadSnapshot> for DeckFilePayloadSnapshot {
     fn from(payload: selectia::services::audio_player::DeckFilePayloadSnapshot) -> Self {
-        DeckFilePayloadSnapshot { duration: payload.duration, sample_rate: payload.sample_rate, channels_count: payload.channels_count, samples_count: payload.samples_count, preview: payload.preview.into() }
+        DeckFilePayloadSnapshot { duration: payload.duration, sample_rate: payload.sample_rate, channels_count: payload.channels_count, samples_count: payload.samples_count, preview: payload.preview.map(|e| e.into()) }
     }
 }
 

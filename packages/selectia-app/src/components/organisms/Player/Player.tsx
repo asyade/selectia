@@ -22,7 +22,7 @@ export function Player() {
     }), []);
 
     const deckElements = useMemo(() => {
-        return decks.map((deck) => <PlayerDeck key={deck.id} deckId={deck.id} />);
+        return decks.map((deck) => <PlayerDeck key={deck.id} deckId={deck.id} status={deck.file?.status ?? null} metadata={deck.file?.metadata ?? null} payload={deck.file?.payload ?? null} />);
     }, [decks]);
 
     return (

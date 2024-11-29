@@ -6,13 +6,13 @@ export type ContextId = bigint;
 
 export type DeckFileMetadataSnapshot = { title: string, };
 
-export type DeckFilePayloadSnapshot = { duration: number, sample_rate: number, channels_count: number, samples_count: number, preview: DeckFilePreview, };
+export type DeckFilePayloadSnapshot = { duration: number, sample_rate: number, channels_count: number, samples_count: number, preview: DeckFilePreview | null, };
 
 export type DeckFilePreview = { sample_rate: number, channels_count: number, samples: Array<number>, };
 
 export type DeckFileStatus = { "kind": "Loading", progress: number, } | { "kind": "Playing", offset: number, } | { "kind": "Paused", offset: number, };
 
-export type DeckFileView = { metadata: DeckFileMetadataSnapshot, payload: DeckFilePayloadSnapshot, status: DeckFileStatus, };
+export type DeckFileView = { metadata: DeckFileMetadataSnapshot | null, payload: DeckFilePayloadSnapshot | null, status: DeckFileStatus, };
 
 export type DeckView = { file: DeckFileView | null, id: number, };
 

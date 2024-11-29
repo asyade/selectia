@@ -12,6 +12,7 @@ pub struct AudioFile {
     format: Box<dyn FormatReader>,
     spec: Option<SignalSpec>,
     decoded: Option<AudioFilePayload>,
+    preview: Option<AudioFilePayload>,
 }
 
 pub struct AudioFilePayload {
@@ -42,9 +43,12 @@ impl AudioFile {
         // Get the format reader yielded by the probe operation.
         let format = probed.format;
 
+
+
         Ok(Self {
             format: format,
             decoded: None,
+            preview: None,
             spec: None,
         })
     }
@@ -69,6 +73,19 @@ impl AudioFile {
         self.spec.as_ref().expect("file not loaded").channels
     }
 
+
+    pub fn generate_preview(&mut self) -> Option<&AudioFilePayload> {
+        if self.preview.is_none() {
+            let payload = self.payload()?;
+            let preview = payload.downsampled(None, 120).unwrap();
+            self.preview = Some(preview);
+        }
+        self.preview.as_ref()
+    }
+
+    pub fn preview(&self) -> Option<&AudioFilePayload> {
+        self.preview.as_ref()
+    }
 
     pub fn decode(&mut self) -> AudioFileResult<&AudioFilePayload> {
         let decoder_opts: DecoderOptions = Default::default();

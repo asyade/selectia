@@ -23,7 +23,7 @@ pub enum AudioPlayerTask {
         callback: TaskCallback<u32>,
     },
     GetDecks {
-        callback: TaskCallback<BTreeMap<u32, PlayerDeck>>,
+        callback: TaskCallback<BTreeMap<u32, DeckSnapshot>>,
     },
     LoadTrack {
         deck_id: u32,
@@ -257,8 +257,48 @@ impl DeckMixer {
         Ok(())
     }
 
-    async fn get_all_decks(&self) -> Result<BTreeMap<u32, PlayerDeck>> {
-        Ok(self.decks.read().await.clone())
+    async fn get_all_decks(&self) -> Result<BTreeMap<u32, DeckSnapshot>> {
+        let decks = self.decks.read().await.clone();
+        let mut result = BTreeMap::new();
+        for (id, deck) in decks.iter() {
+            let lock: sync::RwLockReadGuard<'_, Option<DeckFile>> = deck.file.read().await;
+            let payload = match lock.as_ref() {
+                Some(lock) => {
+                    let metadata = lock.metadata.clone();
+                    let lock = lock.file.read().await;
+                    let preview = lock.preview();
+                    let payload = lock.payload().unwrap();
+                    Some((metadata, DeckFilePayloadSnapshot::new(payload, preview)))
+                }
+                None => None,
+            };
+
+            let (metadata, payload) = payload
+                .map(|(metadata, payload)| (Some(metadata), Some(payload)))
+                .unwrap_or((None, None));
+
+            let status = {
+                let lock = deck.file.read().await;
+                if let Some(lock) = lock.as_ref() {
+                    Some(lock.state.status.read().await.clone())
+                } else {
+                    None
+                }
+            }
+            .unwrap_or(DeckFileStatus::Loading { progress: 0 });
+
+            result.insert(
+                *id,
+                DeckSnapshot {
+                    id: *id,
+                    metadata,
+                    payload,
+                    status,
+                },
+            );
+        }
+
+        Ok(result)
     }
 }
 
