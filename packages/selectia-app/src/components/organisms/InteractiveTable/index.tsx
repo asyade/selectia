@@ -7,6 +7,8 @@ import { useEntries } from "../../../selectia-tauri/hooks/UseEntries";
 import { isDeepEqual } from "../../../utils";
 import { FilterSelection } from "../../../selectia-tauri/dto/models";
 
+export * from "./InteractiveTableRow";
+
 export interface InteractiveTableProps {
     className?: string;
     filter: FilterSelection;
@@ -28,10 +30,8 @@ export function InteractiveTable(props: InteractiveTableProps) {
     )), [entries]);
 
     return (
-        <div className={`${props.className} bg-slate-800 overflow-auto`}>
-            <Table>
-                {table_components}
-            </Table>
-        </div>
+        <Table>
+            {table_components}
+        </Table>
     );
 }

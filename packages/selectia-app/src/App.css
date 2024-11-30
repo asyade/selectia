@@ -1,9 +1,30 @@
+@import '../node_modules/dockview-react/dist/styles/dockview.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 * {
     user-select: none;
+    --selectia-bg-primary: #181920;
+    --selectia-bg-secondary: #21222c;
+    --selectia-text-primary: #64748b;
+    --selectia-text-secondary: #e2e8f0;
+}
+.bg-primary {
+    background-color: var(--selectia-bg-primary);
+}
+
+.bg-secondary {
+    background-color: var(--selectia-bg-secondary);
+}
+
+.text-primary {
+    color: var(--selectia-text-primary);
+}
+
+.text-secondary {
+    color: var(--selectia-text-secondary);
 }
 
 body {
@@ -39,3 +60,99 @@ input, textarea, select, button, .selectable {
         }
     }
 }
+
+.dockview-theme-dracula-custom {
+    --dv-paneview-active-outline-color: dodgerblue;
+    --dv-tabs-and-actions-container-font-size: 13px;
+    --dv-drag-over-background-color: rgba(83, 89, 93, 0.5);
+    --dv-drag-over-border-color: white;
+    --dv-tabs-container-scrollbar-color: #888;
+    --dv-icon-hover-background-color: rgba(90, 93, 94, 0.31);
+    --dv-floating-box-shadow: 8px 8px 8px 0px rgba(83, 89, 93, 0.5);
+    --dv-overlay-z-index: 999;
+    --dv-group-view-background-color: #282a36;
+    --dv-tabs-and-actions-container-background-color: #191a21;
+    --dv-activegroup-hiddenpanel-tab-background-color: #21222c;
+    --dv-inactivegroup-hiddenpanel-tab-background-color: #21222c;
+    --dv-tab-divider-color: #191a21;
+    --dv-activegroup-visiblepanel-tab-color: rgb(248, 248, 242);
+    --dv-activegroup-hiddenpanel-tab-color: rgb(98, 114, 164);
+    --dv-inactivegroup-visiblepanel-tab-color: rgba(248, 248, 242, 0.5);
+    --dv-inactivegroup-hiddenpanel-tab-color: rgba(98, 114, 164, 0.5);
+    --dv-separator-border: #bd93f9;
+    --dv-paneview-header-border-color: #bd93f9;
+    --dv-paneview-active-outline-color: #6272a4;
+
+  }
+
+  
+
+.dockview-theme-abyss {
+
+    .groupview {
+        &.active-group {
+            > .tabs-and-actions-container {
+                border-bottom: 2px solid var(--dv-activegroup-visiblepanel-tab-background-color);
+            }
+        }
+        &.inactive-group {
+            > .tabs-and-actions-container {
+                border-bottom: 2px solid var(--dv-inactivegroup-visiblepanel-tab-background-color);
+            }
+        }
+    }
+}
+
+*  {
+    /* --dv-paneview-active-outline-color	 */
+/* --dv-tabs-and-actions-container-font-size	 */
+/* --dv-tabs-and-actions-container-height	 */
+/* --dv-tab-close-icon	 */
+/* --dv-drag-over-background-color	 */
+/* --dv-drag-over-border-color	 */
+/* --dv-tabs-container-scrollbar-color	 */
+/* --dv-group-view-background-color	 */
+/* --dv-tabs-and-actions-container-background-color	 */
+/* --dv-activegroup-visiblepanel-tab-background-color	 */
+/* --dv-activegroup-hiddenpanel-tab-background-color	 */
+/* --dv-inactivegroup-visiblepanel-tab-background-color	 */
+/* --dv-inactivegroup-hiddenpanel-tab-background-color	 */
+/* --dv-tab-divider-color	 */
+/* --dv-activegroup-visiblepanel-tab-color	 */
+/* --dv-activegroup-hiddenpanel-tab-color	 */
+/* --dv-inactivegroup-visiblepanel-tab-color	 */
+/* --dv-inactivegroup-hiddenpanel-tab-color	 */
+/* --dv-separator-border	 */
+/* --dv-paneview-header-border-color	 */
+/* --dv-icon-hover-background-color	 */
+/* --dv-floating-box-shadow	 */
+    /* --dv-active-sash-color	 */
+    --dv-background-color: red;
+}
+
+
+/* .dockview-theme-dracula {
+    --dv-paneview-active-outline-color: dodgerblue;
+    --dv-tabs-and-actions-container-font-size: 13px;
+    --dv-tabs-and-actions-container-height: 35px;
+    --dv-drag-over-background-color: rgba(83, 89, 93, 0.5);
+    --dv-drag-over-border-color: white;
+    --dv-tabs-container-scrollbar-color: #888;
+    --dv-icon-hover-background-color: rgba(90, 93, 94, 0.31);
+    --dv-floating-box-shadow: 8px 8px 8px 0px rgba(83, 89, 93, 0.5);
+    --dv-overlay-z-index: 999;
+    --dv-group-view-background-color: #282a36;
+    --dv-tabs-and-actions-container-background-color: #191a21;
+    --dv-activegroup-visiblepanel-tab-background-color: #282a36;
+    --dv-activegroup-hiddenpanel-tab-background-color: #21222c;
+    --dv-inactivegroup-visiblepanel-tab-background-color: #282a36;
+    --dv-inactivegroup-hiddenpanel-tab-background-color: #21222c;
+    --dv-tab-divider-color: #191a21;
+    --dv-activegroup-visiblepanel-tab-color: rgb(248, 248, 242);
+    --dv-activegroup-hiddenpanel-tab-color: rgb(98, 114, 164);
+    --dv-inactivegroup-visiblepanel-tab-color: rgba(248, 248, 242, 0.5);
+    --dv-inactivegroup-hiddenpanel-tab-color: rgba(98, 114, 164, 0.5);
+    --dv-separator-border: #bd93f9;
+    --dv-paneview-header-border-color: #bd93f9;
+    --dv-paneview-active-outline-color: #6272a4;
+  } */

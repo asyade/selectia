@@ -1,25 +1,24 @@
-import { Button } from "../../atoms/Button.tsx";
-import { IconEye, IconEyeSlash } from "../../atoms/Icon.tsx";
-import { Label } from "../../atoms/Label.tsx";
 import { useEffect, useState } from "react";
-import { useTags } from "../../../selectia-tauri/hooks/UseTags.ts";
+import { IconEye, IconEyeSlash, Button, Label } from "../../../components";
+import { getTagColor, useTags } from "../../../selectia-tauri/hooks/UseTags.ts";
 import {
-    TagName,
     TagSelection,
     TagView,
 } from "../../../selectia-tauri/dto/models.ts";
-import { useDrag } from "react-dnd";
+import { useTagNames } from "../../../selectia-tauri/hooks/UseTagNames.ts";
 import { ItemTypes } from "../../pages/ManagerPage.tsx";
+import { useDrag } from "react-dnd";
 
 type TagsSelection = Record<string, TagSelection[]>;
 
 export function FilterSubSectionLabels(props: {
     onSelectionChange?: (selection: TagsSelection) => void;
     className?: string;
-    tagNames: TagName[];
 }) {
+    const [tagNames] = useTagNames();
+
     const [selectedTags, setSelectedTags] = useState<TagsSelection>({});
-    const tagSections = props.tagNames.filter((x) => x.use_for_filtering).map(
+    const tagSections = tagNames.filter((x) => x.use_for_filtering).map(
         (x) => (
             <TagSubSection
                 onSelectionChange={(selected) => {
@@ -42,7 +41,7 @@ export function FilterSubSectionLabels(props: {
 
     return (
         <div
-            className={`${props.className} flex flex-col rounded-md bg-slate-800`}
+            className={`${props.className} flex flex-col`}
         >
             {tagSections}
         </div>
@@ -67,8 +66,9 @@ function DragableLabel(props: {
 
     return (
         <Label
+            bgColor={props.tag.id.toString() === "-1" ? getTagColor(BigInt(0),BigInt(0)): getTagColor(props.tag.name_id, props.tag.id)}
             key={props.tag.id}
-            innerRef={dragRef}
+            dragRef={dragRef}
             className="flex flex-col cursor-pointer"
             style={{ opacity }}
             selectable={true}
@@ -95,6 +95,7 @@ function TagSubSection(props: {
 
             return (
                 <DragableLabel
+                
                     key={x.id}
                     tag={x}
                     selected={selected}

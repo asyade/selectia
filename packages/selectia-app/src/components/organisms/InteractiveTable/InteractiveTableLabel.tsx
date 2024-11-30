@@ -3,6 +3,7 @@ import { useDrag } from "react-dnd";
 import { ItemTypes } from "../../pages/ManagerPage";
 import { MetadataTagView } from "../../../selectia-tauri/dto/models";
 import { TagName } from "../../../selectia-tauri/dto/models";
+import { getTagColor } from "../../../selectia-tauri/hooks/UseTags";
 
 export function InteractiveTableLabel(
     props: { allTagNames: TagName[]; tag: MetadataTagView },
@@ -25,7 +26,8 @@ export function InteractiveTableLabel(
     return (
         <div>
             <Label
-                innerRef={dragRef}
+                bgColor={getTagColor(props.tag.tag_name_id, props.tag.tag_id)}
+                dragRef={dragRef}
                 className="flex flex-col cursor-pointer"
                 style={{ opacity }}
             >

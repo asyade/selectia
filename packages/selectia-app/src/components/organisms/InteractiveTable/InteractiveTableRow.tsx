@@ -9,8 +9,20 @@ import { InteractiveTableLabel } from "./InteractiveTableLabel";
 import { ItemTypes } from "../../pages/ManagerPage";
 import { useDrag, useDrop } from "react-dnd";
 import { IconTrash } from "../../atoms/Icon";
-import { EntryViewCursor, interactive_list_create_tag, interactive_list_get_tag_creation_suggestions, TAG_NAME_ID_DIRECTORY, TAG_NAME_ID_FILE_NAME, TAG_NAME_ID_TITLE } from "../../../selectia-tauri";
-import { MetadataTagView, TagName, TagView } from "../../../selectia-tauri/dto/models";
+import {
+    EntryViewCursor,
+    interactive_list_create_tag,
+    interactive_list_get_tag_creation_suggestions,
+    TAG_NAME_ID_DIRECTORY,
+    TAG_NAME_ID_FILE_NAME,
+    TAG_NAME_ID_TITLE,
+} from "../../../selectia-tauri";
+import {
+    MetadataTagView,
+    TagName,
+    TagView,
+} from "../../../selectia-tauri/dto/models";
+import { DropZoneDecorator } from "../../molecules/DropZoneDecorator";
 
 interface InteractiveTableRowProps {
     entry: EntryViewCursor;
@@ -37,13 +49,23 @@ export function InteractiveTableRow(props: InteractiveTableRowProps) {
         } else {
             setExpanded(!expanded);
         }
-    }
+    };
 
     const tag_section = <TableRowTagsSection {...props} />;
 
-    return <TableRow innerRef={ref} className={`${expanded ? "bg-slate-800" : ""} rounded-md`} onClick={handleClick} title_component={title_component} tag_components={<div>
-        {tag_section}
-    </div>} />;
+    return (
+        <TableRow
+            innerRef={ref}
+            className={`rounded-md ${expanded ? "bg-slate-800" : ""}`}
+            onClick={handleClick}
+            title_component={title_component}
+            tag_components={
+                <div>
+                    {tag_section}
+                </div>
+            }
+        />
+    );
 }
 
 function InteractiveTableRowTitle(props: InteractiveTableRowProps) {
@@ -60,89 +82,137 @@ function InteractiveTableRowTitle(props: InteractiveTableRowProps) {
         [],
     );
 
-    return <div ref={dragRef} style={{ opacity }}>
-        <p className="text-slate-400 text-lg truncate block">{title}</p>
-    </div>;
+    return (
+        <div ref={dragRef} style={{ opacity }}>
+            <p className="text-slate-400 text-lg truncate block">{title}</p>
+        </div>
+    );
 }
 
 function TableRowTagsSection(props: InteractiveTableRowProps) {
     const [tagCreation, setTagCreation] = useState<TagName | null>(null);
 
     const [{ isOver, canDrop, showTrash }, drop] = useDrop(() => ({
-        accept: [ItemTypes.FILTER_SECTION_LABEL, ItemTypes.INTERACTIVE_TABLE_LABEL],
+        accept: [
+            ItemTypes.FILTER_SECTION_LABEL,
+            ItemTypes.INTERACTIVE_TABLE_LABEL,
+        ],
         drop: (args, monitor) => {
             const kind = monitor.getItemType();
             if (kind == ItemTypes.FILTER_SECTION_LABEL) {
                 const item = args as TagView;
-                interactive_list_create_tag(props.entry.context_id, props.entry.entry.metadata_id, item.name_id, item.value).then(() => {
+                interactive_list_create_tag(
+                    props.entry.context_id,
+                    props.entry.entry.metadata_id,
+                    item.name_id,
+                    item.value,
+                ).then(() => {
                     console.log("filter section label");
                 });
             } else if (kind == ItemTypes.INTERACTIVE_TABLE_LABEL) {
                 const item = args as MetadataTagView;
-                interactive_list_create_tag(props.entry.context_id, props.entry.entry.metadata_id, item.tag_name_id, item.tag_value).then(() => {
+                interactive_list_create_tag(
+                    props.entry.context_id,
+                    props.entry.entry.metadata_id,
+                    item.tag_name_id,
+                    item.tag_value,
+                ).then(() => {
                     console.log("interactive table label");
                 });
             }
         },
-        collect: monitor => ({
+        collect: (monitor) => ({
             isOver: !!monitor.isOver({ shallow: true }),
             canDrop: !!monitor.canDrop(),
-            showTrash: monitor.canDrop() && monitor.getItemType() == ItemTypes.INTERACTIVE_TABLE_LABEL && monitor.getItem<MetadataTagView>().metadata_id == props.entry.entry.metadata_id
+            showTrash: monitor.canDrop() &&
+                monitor.getItemType() == ItemTypes.INTERACTIVE_TABLE_LABEL &&
+                monitor.getItem<MetadataTagView>().metadata_id ==
+                    props.entry.entry.metadata_id,
         }),
-    }), [])
+    }), []);
 
     const handleAddTag = (selectedTag: TagName) => {
         setTagCreation(selectedTag);
-    }
+    };
 
     const static_tag_components = useMemo(() => {
         if (showTrash) {
-            return [<TagSectionTrashZone key="tag_section_trash_zone" />]
+            return [<TagSectionTrashZone key="tag_section_trash_zone" />];
         } else if (tagCreation) {
-            return [<IndeterminateTagComponent tagName={tagCreation} entry={props.entry} key={`indeterminate_${tagCreation.id}`} onBlur={() => setTagCreation(null)} />]
+            return [
+                <IndeterminateTagComponent
+                    tagName={tagCreation}
+                    entry={props.entry}
+                    key={`indeterminate_${tagCreation.id}`}
+                    onBlur={() => setTagCreation(null)}
+                />,
+            ];
         } else {
-            return [<ButtonAddTag key="button_add_tag" allTagNames={props.allTagNames} onAddTag={handleAddTag} />]
+            return [
+                <ButtonAddTag
+                    key="button_add_tag"
+                    allTagNames={props.allTagNames}
+                    onAddTag={handleAddTag}
+                />,
+            ];
         }
     }, [tagCreation, showTrash]);
 
-    const tag_components = useMemo(() => props.entry.entry.tags.filter((tag) => {
-        return tag.tag_name_id != TAG_NAME_ID_FILE_NAME &&
-            tag.tag_name_id != TAG_NAME_ID_TITLE &&
-            tag.tag_name_id != TAG_NAME_ID_DIRECTORY;
-    }).map((tag) => (
-        <InteractiveTableLabel allTagNames={props.allTagNames} key={`${tag.tag_name_id}_${tag.tag_id}`} tag={tag} />
-    ))
-        , [props.entry.entry.tags]);
+    const tag_components = useMemo(
+        () =>
+            props.entry.entry.tags.filter((tag) => {
+                return tag.tag_name_id != TAG_NAME_ID_FILE_NAME &&
+                    tag.tag_name_id != TAG_NAME_ID_TITLE &&
+                    tag.tag_name_id != TAG_NAME_ID_DIRECTORY;
+            }).map((tag) => (
+                <InteractiveTableLabel
+                    allTagNames={props.allTagNames}
+                    key={`${tag.tag_name_id}_${tag.tag_id}`}
+                    tag={tag}
+                />
+            )),
+        [props.entry.entry.tags],
+    );
 
-    const all_tag_components = useMemo(() => tag_components.concat(static_tag_components), [static_tag_components, tag_components]);
-
-    const extra_class = isOver ? "outline outline-dashed outline-2 outline-green-400" : canDrop ? "outline outline outline-1 outline-slate-800" : "";
+    const all_tag_components = useMemo(
+        () => tag_components.concat(static_tag_components),
+        [static_tag_components, tag_components],
+    );
 
     return (
-        <div ref={drop} className={`w-full flex-wrap flex flex-row gap-2 p-1 ${extra_class}`}>
+        <DropZoneDecorator
+            dropZoneRef={drop}
+            isOver={isOver}
+            canDrop={canDrop}
+            className="w-full flex-wrap flex flex-row gap-2 p-1"
+        >
             {all_tag_components}
-        </div>
+        </DropZoneDecorator>
     );
 }
 
 function TagSectionTrashZone() {
     const [{ isOver }, drop] = useDrop(() => ({
-        accept: [ ItemTypes.INTERACTIVE_TABLE_LABEL],
+        accept: [ItemTypes.INTERACTIVE_TABLE_LABEL],
         drop: (_args, _monitor) => {
         },
-        collect: monitor => ({
+        collect: (monitor) => ({
             isOver: !!monitor.isOver(),
         }),
-    }), [])
+    }), []);
 
     return (
-        <Label innerRef={drop} className={`flex h-11 w-11 items-center justify-center ${isOver ? "outline outline-dashed outline-2 outline-red-400" : ""}`}>
-            <IconTrash />
-        </Label>
-    )
+        <DropZoneDecorator dropZoneRef={drop} isOver={isOver} canDrop={true}>
+            <Label className="h-11 w-11 flex items-center justify-center">
+                <IconTrash />
+            </Label>
+        </DropZoneDecorator>
+    );
 }
 
-function ButtonAddTag(props: { allTagNames: TagName[], onAddTag: (selectedTag: TagName) => void }) {
+function ButtonAddTag(
+    props: { allTagNames: TagName[]; onAddTag: (selectedTag: TagName) => void },
+) {
     const [showDropdown, setShowDropdown] = useState(false);
 
     const handleClose = (selectedTag: TagName | null) => {
@@ -150,23 +220,45 @@ function ButtonAddTag(props: { allTagNames: TagName[], onAddTag: (selectedTag: T
         if (selectedTag) {
             props.onAddTag(selectedTag);
         }
-    }
+    };
 
-    return <div>
-        <div className="relative">
-            <Label key="button_add_tag" className="flex h-11 flex-col cursor-pointer items-center justify-center" onClick={() => setShowDropdown(!showDropdown)} >
-                <span className="text-slate-400 text-l truncate block">+</span>
-            </Label>
-            {
-                showDropdown && (<ButtonAddTagDropdown allTagNames={props.allTagNames} onClose={handleClose} />)
-            }
+    return (
+        <div>
+            <div className="relative">
+                <Label
+                    key="button_add_tag"
+                    className="flex h-11 flex-col cursor-pointer items-center justify-center"
+                    onClick={() => setShowDropdown(!showDropdown)}
+                >
+                    <span className="text-slate-400 text-l truncate block">
+                        +
+                    </span>
+                </Label>
+                {showDropdown && (
+                    <ButtonAddTagDropdown
+                        allTagNames={props.allTagNames}
+                        onClose={handleClose}
+                    />
+                )}
+            </div>
         </div>
-    </div>;
+    );
 }
 
-function ButtonAddTagDropdown(props: { allTagNames: TagName[], onClose: (selectedTag: TagName | null) => void }) {
-    const drop_down_buttons = props.allTagNames.filter(x => x.use_for_filtering).map((tag) => (
-        <Button variant="outline" key={tag.id} onClick={() => props.onClose(tag)}>
+function ButtonAddTagDropdown(
+    props: {
+        allTagNames: TagName[];
+        onClose: (selectedTag: TagName | null) => void;
+    },
+) {
+    const drop_down_buttons = props.allTagNames.filter((x) =>
+        x.use_for_filtering
+    ).map((tag) => (
+        <Button
+            variant="outline"
+            key={tag.id}
+            onClick={() => props.onClose(tag)}
+        >
             <span className="text-slate-400 text-left w-full">{tag.name}</span>
         </Button>
     ));
@@ -178,7 +270,9 @@ function ButtonAddTagDropdown(props: { allTagNames: TagName[], onClose: (selecte
     );
 }
 
-function IndeterminateTagComponent(props: { tagName: TagName, entry: EntryViewCursor, onBlur: () => void }) {
+function IndeterminateTagComponent(
+    props: { tagName: TagName; entry: EntryViewCursor; onBlur: () => void },
+) {
     const ref = useRef<HTMLDivElement>(null);
     const [value, setValue] = useState<string>("");
     const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -187,28 +281,47 @@ function IndeterminateTagComponent(props: { tagName: TagName, entry: EntryViewCu
 
     const handleSubmit = () => {
         if (value) {
-            interactive_list_create_tag(props.entry.context_id, props.entry.entry.metadata_id, props.tagName.id, value).then(() => {
+            interactive_list_create_tag(
+                props.entry.context_id,
+                props.entry.entry.metadata_id,
+                props.tagName.id,
+                value,
+            ).then(() => {
                 props.onBlur();
             });
         } else {
             props.onBlur();
         }
-    }
+    };
 
     useEffect(() => {
         if (!value) {
             return;
         }
-        interactive_list_get_tag_creation_suggestions(props.entry.context_id, props.tagName.id, value).then((suggestions) => {
+        interactive_list_get_tag_creation_suggestions(
+            props.entry.context_id,
+            props.tagName.id,
+            value,
+        ).then((suggestions) => {
             setSuggestions(suggestions);
         });
     }, [value]);
 
-
-    return (<div ref={ref}>
-        <Label className="relative flex flex-col outline-dashed outline-3 outline-yellow-800">
-            <span className="leading-3 text-slate-400 text-xs truncate block">{props.tagName.name}</span>
-            <TextInput className="bg-transparent" suggestedValues={suggestions} autoFocus={true} onSubmit={handleSubmit} onChange={(value) => setValue(value)} value={value} />
-        </Label>
-    </div>);
+    return (
+        <div ref={ref}>
+            <Label className="relative flex flex-col outline-dashed outline-3 outline-yellow-800">
+                <span className="leading-3 text-slate-400 text-xs truncate block">
+                    {props.tagName.name}
+                </span>
+                <TextInput
+                    className="bg-transparent"
+                    suggestedValues={suggestions}
+                    autoFocus={true}
+                    onSubmit={handleSubmit}
+                    onChange={(value) => setValue(value)}
+                    value={value}
+                />
+            </Label>
+        </div>
+    );
 }

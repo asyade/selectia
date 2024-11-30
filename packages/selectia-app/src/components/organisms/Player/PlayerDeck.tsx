@@ -19,21 +19,24 @@ export function PlayerDeck(
         payload: DeckFilePayloadSnapshot | null;
     },
 ) {
-    const [metadata, payload, status, setStatus] = useDeck(props.deckId, props.status, props.metadata, props.payload);
+    const [metadata, payload, status, setStatus] = useDeck(
+        props.deckId,
+        props.status,
+        props.metadata,
+        props.payload,
+    );
 
     const [statusKind, setStatusKind] = useState<DeckFileStatus["kind"] | null>(
         null,
     );
 
-    const trackViewMemo = useMemo(() => {
-        return (
-            <TrackView
-                payload={payload}
-                status={status}
-                setStatus={setStatus}
-            />
-        );
-    }, [payload, status]);
+    const trackViewMemo = (
+        <TrackView
+            payload={payload}
+            status={status}
+            setStatus={setStatus}
+        />
+    );
 
     useEffect(() => {
         if (status?.kind !== statusKind) {
@@ -45,18 +48,16 @@ export function PlayerDeck(
         return <div>Loading...</div>;
     }
     return (
-        <div className="bg-slate-800">
-            <div className="flex flex-col gap-2 relative">
-                {trackViewMemo}
-                <div className="flex justify-between items-center">
-                    <div className="grow overflow-hidden">
-                        <p className="text-white text-xs truncate">
-                            {metadata.title}
-                        </p>
-                    </div>
-                    <div className="shrink-0">
-                        <TrackControls status={status} setStatus={setStatus} />
-                    </div>
+        <div className="flex flex-col gap-2 relative">
+            {trackViewMemo}
+            <div className="flex justify-between items-center">
+                <div className="grow overflow-hidden">
+                    <p className="text-white text-xs truncate">
+                        {metadata.title}
+                    </p>
+                </div>
+                <div className="shrink-0">
+                    <TrackControls status={status} setStatus={setStatus} />
                 </div>
             </div>
         </div>
@@ -72,10 +73,13 @@ function TrackView(
 ) {
     const trackBarRef = useRef<HTMLDivElement>(null);
 
-    const [waveformSize, setWaveformSize] = useState({ width: 800, height: 200 });
+    const [waveformSize, setWaveformSize] = useState<
+        { width: number; height: number } | null
+    >(null);
 
-    const progress = (props.payload && props.status) ? trackProgress(props.payload, props.status) : 0;
-
+    const progress = (props.payload && props.status)
+        ? trackProgress(props.payload, props.status)
+        : 0;
 
     const handleTrackBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -92,8 +96,14 @@ function TrackView(
     };
 
     const handleResize = () => {
-        const { width, height } = trackBarRef.current?.getBoundingClientRect() ?? { width: 800, height: 200 };
-        if (width !== waveformSize.width || height !== waveformSize.height) {
+        if (!trackBarRef.current) {
+            return;
+        }
+        const { width, height } = trackBarRef.current.getBoundingClientRect();
+        if (
+            !waveformSize ||
+            (width !== waveformSize.width || height !== waveformSize.height)
+        ) {
             console.log(width, height);
             setWaveformSize({ width, height });
         }
@@ -108,14 +118,24 @@ function TrackView(
     }
 
     return (
-        <div ref={trackBarRef} className="w-full h-16 relative" onClick={(e) => handleTrackBarClick(e)}>
+        <div
+            ref={trackBarRef}
+            className="w-full h-16 relative"
+            onClick={(e) => handleTrackBarClick(e)}
+        >
+            <div className="absolute top-0 left-0">
+                {waveformSize && (
+                    <AudioWaveform
+                        audioBuffer={props.payload?.preview ?? null}
+                        width={waveformSize.width}
+                        height={waveformSize.height}
+                    />
+                )}
+            </div>
             <div
-                className="bg-red-500 h-full"
+                className="bg-slate-700 h-full"
                 style={{ width: `${progress}%` }}
             >
-            </div>
-            <div className="absolute top-0 left-0">
-                <AudioWaveform audioBuffer={props.payload?.preview ?? null} width={waveformSize.width} height={waveformSize.height} />
             </div>
         </div>
     );
@@ -144,6 +164,7 @@ function TrackControls(
         return (
             <div>
                 <Button
+                    variant="outline"
                     onClick={() =>
                         setStatus({ kind: "Paused", offset: status.offset })}
                 >
@@ -155,6 +176,7 @@ function TrackControls(
         return (
             <div>
                 <Button
+                    variant="outline"
                     onClick={() =>
                         setStatus({ kind: "Playing", offset: status.offset })}
                 >
@@ -175,7 +197,6 @@ function AudioWaveform(
     },
 ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-
     useEffect(() => {
         if (!audioBuffer) {
             console.error("No audio buffer");
@@ -208,7 +229,7 @@ function AudioWaveform(
             ctx.lineTo(x, y);
         });
 
-        ctx.strokeStyle = "blue";
+        ctx.strokeStyle = "#7c3aed";
         ctx.lineWidth = 1;
         ctx.stroke();
     }, [audioBuffer, width, height]);

@@ -1,4 +1,4 @@
-export type ButtonVariant = "primary" | "outline";
+export type ButtonVariant = "primary" | "outline" | "ghost";
 
 export interface ButtonProps {
     variant?: ButtonVariant;
@@ -7,10 +7,13 @@ export interface ButtonProps {
     className?: string;
 }
 
+const baseClass = "flex items-center justify-center rounded";
+const classNames = {
+    "outline": `${baseClass} p-1 hover:bg-slate-700`,
+    "primary": `${baseClass} p-1 hover:bg-blue-700 bg-blue-500`,
+    "ghost": `${baseClass} hover:bg-slate-700`,
+};
+
 export function Button(props: ButtonProps) {
-    if (props.variant === "outline") {
-        return <button onMouseDown={(e) => e.preventDefault()} className={`${props.className} p-2 flex items-center justify-center rounded hover:bg-slate-700`} onClick={() => props.onClick?.()}>{props.children}</button>;
-    } else {
-        return <button onMouseDown={(e) => e.preventDefault()} className={`${props.className} p-2 flex items-center justify-center rounded hover:bg-blue-700 bg-blue-500`} onClick={() => props.onClick?.()}>{props.children}</button>;
-    }
+    return <button onMouseDown={(e) => e.preventDefault()} className={`${props.className} ${classNames[props.variant ?? "primary"]}`} onClick={() => props.onClick?.()}>{props.children}</button>;
 }

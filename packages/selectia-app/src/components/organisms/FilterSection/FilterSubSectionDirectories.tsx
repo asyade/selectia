@@ -1,19 +1,22 @@
 import { useMemo, useState } from "react";
 import { TagView } from "../../../selectia-tauri/dto/models";
 import { useTags } from "../../../selectia-tauri/hooks/UseTags";
-import { IconFolderOpenOutline, IconFolderOutline, } from "../../atoms/Icon";
+import { IconFolderOpenOutline, IconFolderOutline, } from "../../../components";
 
-export function FilterSubSectionDirectories() {
+export function FilterSubSectionDirectories(props: {
+    className?: string;
+}) {
     const [tags] = useTags("directory");
 
     const tagAsDirectoryCursor = new TagAsDirectoryCursor(tags);
+
 
     const treeItems = useMemo(() => tagAsDirectoryCursor.root.children.map(x => {
         const id = x.path();
         return <TreeItem key={id} node={x} />
     }), [tags]);
-
-    return <div className="flex flex-wrap flex-col w-full bg-slate-800 rounded-md">
+    console.log(treeItems);
+    return <div className={`${props.className} flex flex-wrap flex-col`}>
         {treeItems}
     </div>;
 }
@@ -36,7 +39,7 @@ function TreeItem(props: {
 
     return (
         <>
-            <div onClick={(e) => handleClick(e)} key={props.node.tag?.id} className={`${selected ? "box-border outline outline-2 outline-dashed outline-slate-500" : ""} flex flex-row p-1 justify-start items-center cursor-pointer hover:bg-slate-700`}>
+            <div onClick={(e) => handleClick(e)} key={props.node.tag?.id} className={`${selected ? "box-border outline outline-2 outline-dashed outline-slate-500" : ""} flex flex-row justify-start items-center cursor-pointer hover:bg-slate-700`}>
                 <div className="p-1">
                     {open && children.length > 0 ? <IconFolderOpenOutline /> : <IconFolderOutline />}
                 </div>
@@ -54,9 +57,10 @@ class TagAsDirectoryCursor {
     constructor(tags: TagView[]) {
         this.root = new DirectoryCursorNode("Root", []);
         for (let tag of tags) {
-            let splited = tag.value.split("/");
+            const normalizedPath = tag.value.replace(/\\/g, "/");
+            let splited = normalizedPath.split("/");
             let current = this.root;
-            for (let i = 1 /* Init at 1 bcause path are absolute */; i < splited.length; i++) {
+            for (let i = 0; i < splited.length; i++) {
                 let next = current.children.find(x => x.title === splited[i]);
                 if (!next) {
                     next = new DirectoryCursorNode(splited[i], []);
@@ -66,7 +70,7 @@ class TagAsDirectoryCursor {
                 next.tag = tag;
             }
         }
-        this.normalize();
+        // this.normalize();
     }
 
     normalize() {

@@ -1,15 +1,25 @@
-import { LegacyRef } from "react";
+import { ConnectDragSource } from "react-dnd";
 
 interface LabelProps {
-    className?: string;
-    children: React.ReactNode;
+    bgColor?: { r: number; g: number; b: number; opacity: number };
     selectable?: boolean;
     selected?: boolean;
-    style?: React.CSSProperties;
-    onClick?: () => void;
-    innerRef?: LegacyRef<HTMLDivElement>;
+    dragRef?: ConnectDragSource;
 }
 
-export function Label(props: LabelProps) {
-    return <div onClick={props.onClick} ref={props.innerRef} style={props.style} className={`p-1 rounded text-sm/2 text-white ${props.className} ${props.selectable ? "cursor-pointer" : ""} ${props.selected ? "bg-green-700/50" : "bg-green-800/10"}`}>{props.children}</div>;
+export function Label({bgColor, selectable, selected, dragRef, ...props}: LabelProps & React.ComponentPropsWithoutRef<"div">) {
+    const color = bgColor
+        ? { ...bgColor, opacity: selected ? 0.8 : 0.3 }
+        : { r: 31, g: 41, b: 55, opacity: selected ? 0.8 : 0.3 };
+
+    const style = {
+        ...props.style,
+        backgroundColor:
+            `rgba(${color.r}, ${color.g}, ${color.b}, ${color.opacity})`,
+    };
+
+    const className = `${selected ? "outline-2 outline-dashed" : ""} p-1 rounded text-sm/2 text-white cursor-pointer ${props.className}`;
+    return (
+        <div {...props} style={style} className={className} ref={dragRef} />
+    );
 }

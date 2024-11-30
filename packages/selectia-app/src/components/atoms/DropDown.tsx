@@ -10,7 +10,7 @@ export function DropDown(props: {
     useClickOutside(ref, props.onClose);
 
     return (
-        <div ref={ref} className={`${props.className} z-10 bg-slate-800 rounded flex flex-col absolute shadow-lg border border-slate-700`}>
+        <div ref={ref} className={`${props.className} z-10 bg-secondary rounded flex flex-col absolute shadow-lg border border-slate-700`}>
             {props.children}
         </div>
     );

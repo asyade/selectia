@@ -7,7 +7,9 @@ import { useMemo } from "react";
 import { EntryView } from "../../../selectia-tauri/dto/models";
 import { create_audio_deck, load_audio_track } from "../../../selectia-tauri";
 
-export function Player() {
+export function Player(props: {
+    className?: string;
+}) {
     const [decks] = useAudioPlayer();
 
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
@@ -26,7 +28,12 @@ export function Player() {
     }, [decks]);
 
     return (
-        <div className="p-1 flex flex-col bg-slate-800 h-200 fixed bottom-12 left-0 right-0 z-50 gap-1">
+        <div className={`flex flex-col h-200 gap-1 min-h-full ${props.className}`}>
+            {decks.length === 0 && (
+                <div className="flex-grow flex items-center justify-center">
+                    <div className="text-slate-400">Drop tracks here</div>
+                </div>
+            )}
             {canDrop && (
                 <div ref={drop} className={`bg-slate-700 w-full p-4 flex items-center justify-center outline outline-dashed ${isOver ? "outline-2 outline-green-400" : ""}`}>
                     <IconCirclePlus />
