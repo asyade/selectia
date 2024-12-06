@@ -7,6 +7,8 @@ import { Statusbar } from "./components/organisms/StatusBar";
 import { useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { GlobalAction } from "./GlobalAction";
+import { GlobalActionHandler } from "./GlobalActionHandler";
 
 
 /// TODO: this is a workaround but we need to fix the serialization of BigInts in a proper way or use i32, string or something else in the backend

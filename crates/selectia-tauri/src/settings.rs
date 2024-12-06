@@ -3,22 +3,23 @@ use crate::prelude::*;
 #[derive(Serialize, Deserialize)]
 pub struct Settings {
     pub database_path: PathBuf,
+    pub demuxer_data_path: PathBuf,
     pub worker_threads: u32,
 }
 
 impl Settings {
-    pub fn load() -> eyre::Result<Self> {
+    pub async fn load() -> eyre::Result<Self> {
         let data_dir = match std::env::var("SELECTIA_DATA_DIR").ok() {
             Some(path) => {
                 info!("Using data directory from environment variable: {}", path);
                 PathBuf::from(path)
             }
-            None => dirs::data_dir().unwrap_or_else(|| {
+            None => dirs::data_local_dir().map(|path| path.join("selectia")).unwrap_or_else(|| {
                 warn!("No data directory found, using current directory");
                 PathBuf::from(".")
             }),
         };
-
+        tokio::fs::create_dir_all(&data_dir).await?;
         let settings_file_path = data_dir.join("settings.json");
 
         match Self::load_stored_settings(&settings_file_path) {
@@ -41,6 +42,7 @@ impl Settings {
         );
         let settings = Settings {
             database_path: data_dir.join("database.db"),
+            demuxer_data_path: data_dir.join("demuxer"),
             worker_threads: 4,
         };
         let settings_str = serde_json::to_string(&settings)?;

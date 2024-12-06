@@ -49,9 +49,6 @@ export function Explorer(props: { contextId: string, className?: string }) {
             },
             minimumSize: 30,
         });
-        api.onDidAddView((event) => {
-            console.log(event);
-        });
         api.addPanel({
             id: "interactive_table",
             component: "interactive_table",

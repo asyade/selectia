@@ -18,3 +18,4 @@ export { DropZoneDecorator } from './molecules/DropZoneDecorator';
 // Organisms
 export * from './organisms/FilterSection';
 export * from './organisms/InteractiveTable';
+export * from './organisms/Player';

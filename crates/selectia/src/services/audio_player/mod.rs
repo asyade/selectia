@@ -98,13 +98,13 @@ impl<T> BufferedSamplesSource<T> {
                         DeckFileStatus::Playing { offset } => {
                             for (i, sample) in self.buffer.iter_mut().enumerate() {
                                 *sample = T::from_sample(
-                                    payload.samples[((*offset + i as u32)
-                                        % payload.samples.len() as u32)
+                                    payload.buffer.buffer[((*offset + i as u32)
+                                        % payload.buffer.buffer.len() as u32)
                                         as usize],
                                 );
                             }
                             *offset =
-                                (*offset + self.buffer.len() as u32) % payload.samples.len() as u32;
+                                (*offset + self.buffer.len() as u32) % payload.buffer.buffer.len() as u32;
                             file.state
                                 .updated
                                 .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -122,6 +122,7 @@ impl<T> BufferedSamplesSource<T> {
     }
 }
 
+#[derive(PartialEq)]
 pub enum SamplesSource {
     File(DeckFile),
 }
@@ -195,10 +196,17 @@ impl AudioPlayer {
                 metadata_id,
             } => {
                 let file = self.database.get_file_from_metadata_id(metadata_id).await?;
-                let loaded = self.decks.load_file(deck_id, file.path).await?;
+                
+                let deck: PlayerDeck = self.decks.get_deck(deck_id).await?;
+                let (loaded_file, previous) = deck.load_file(file.path).await?;
+        
+
                 let backend = self.backend.write().await;
                 let backend = backend.as_ref().ok_or_eyre("Backend not loaded")?;
-                backend.send(BackendMessage::CreateSource(loaded)).await?;
+                if let Some(previous) = previous {
+                    backend.send(BackendMessage::DeleteSource(SamplesSource::File(previous))).await?;
+                }
+                backend.send(BackendMessage::CreateSource(SamplesSource::File(loaded_file))).await?;
             }
             AudioPlayerTask::SetDeckFileStus {
                 deck_id,
@@ -219,16 +227,6 @@ impl DeckMixer {
             next_deck_id: Arc::new(AtomicU32::new(1)),
             decks: Arc::new(RwLock::new(BTreeMap::new())),
         }
-    }
-
-    async fn load_file(&self, deck_id: u32, file: String) -> Result<SamplesSource> {
-        let deck: PlayerDeck = self.get_deck(deck_id).await?;
-        let loaded_file = deck.load_file(file).await?;
-        // self.sources
-        //     .write()
-        //     .await
-        //     .push(BufferedSamplesSource::new(SamplesSource::File(loaded_file)));
-        Ok(SamplesSource::File(loaded_file))
     }
 
     async fn create_deck(&self, dispatcher: EventDispatcher<AudioPlayerEvent>) -> Result<u32> {

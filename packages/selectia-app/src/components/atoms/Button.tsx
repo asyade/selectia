@@ -2,9 +2,6 @@ export type ButtonVariant = "primary" | "outline" | "ghost";
 
 export interface ButtonProps {
     variant?: ButtonVariant;
-    children: React.ReactNode;
-    onClick?: () => void;
-    className?: string;
 }
 
 const baseClass = "flex items-center justify-center rounded";
@@ -14,6 +11,12 @@ const classNames = {
     "ghost": `${baseClass} hover:bg-slate-700`,
 };
 
-export function Button(props: ButtonProps) {
-    return <button onMouseDown={(e) => e.preventDefault()} className={`${props.className} ${classNames[props.variant ?? "primary"]}`} onClick={() => props.onClick?.()}>{props.children}</button>;
+export function Button({ variant, ...props }: ButtonProps & React.ComponentPropsWithoutRef<"button">) {
+    const className = `${props.className} ${classNames[variant ?? "primary"]}`;
+
+    // Prevent the button from being dragged when clicking on it (that cause issue when used in header actions but maybe scoped to that in future)
+    const onMouseDown = props.onMouseDown ?? ((e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+    });
+    return <button onMouseDown={onMouseDown} className={className} {...props} />;
 }

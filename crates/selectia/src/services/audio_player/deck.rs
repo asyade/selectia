@@ -27,6 +27,12 @@ pub struct DeckFile {
     pub metadata: DeckFileMetadataSnapshot,
 }
 
+impl PartialEq for DeckFile {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.file, &other.file)
+    }
+}
+
 #[derive(Clone)]
 pub struct DeckFileState {
     /// The status of the current file.
@@ -53,6 +59,7 @@ pub struct DeckFilePayloadSnapshot {
 
 #[derive(Clone, Debug)]
 pub struct DeckFilePreview {
+    pub original_sample_rate: u32,
     pub sample_rate: u32,
     pub channels_count: usize,
     pub samples: Vec<f32>,
@@ -74,13 +81,15 @@ impl PlayerDeck {
         }
     }
 
-    pub async fn load_file(&self, path: impl AsRef<Path>) -> eyre::Result<DeckFile> {
+    pub async fn load_file(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> eyre::Result<(DeckFile, Option<DeckFile>)> {
         let file = tokio::fs::File::open(&path).await?;
         let file = Box::new(file.into_std().await);
         let audio_file = AudioFile::from_source(file, &path)?;
 
-
-        let metadata =DeckFileMetadataSnapshot {
+        let metadata = DeckFileMetadataSnapshot {
             title: path.as_ref().to_string_lossy().to_string(),
         };
 
@@ -96,16 +105,29 @@ impl PlayerDeck {
             metadata: metadata.clone(),
         };
 
-        *self.file.write().await = Some(loaded_file.clone());
+        let previous = {
+            let mut file_lock = self.file.write().await;
+            file_lock.replace(loaded_file.clone())
+        };
 
-        let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFileMetadataUpdated {
-            id: self.id,
-            metadata,
-        }).await;
+        let _ = self
+            .dispatcher
+            .dispatch(AudioPlayerEvent::DeckFileMetadataUpdated {
+                id: self.id,
+                metadata,
+            })
+            .await;
+
+        self.dispatcher
+            .dispatch(AudioPlayerEvent::DeckFileStatusUpdated {
+                id: self.id,
+                status: DeckFileStatus::Loading { progress: 0 },
+            })
+            .await?;
 
         tokio::spawn(self.clone().background_load_file_content());
 
-        Ok(loaded_file)
+        Ok((loaded_file, previous))
     }
 
     pub async fn set_status(&self, status: DeckFileStatus) -> eyre::Result<()> {
@@ -118,10 +140,12 @@ impl PlayerDeck {
             .state
             .clone();
         state.set_status(status.clone()).await;
-        self.dispatcher.dispatch(AudioPlayerEvent::DeckFileStatusUpdated {
-            id: self.id,
-            status,
-        }).await?;
+        self.dispatcher
+            .dispatch(AudioPlayerEvent::DeckFileStatusUpdated {
+                id: self.id,
+                status,
+            })
+            .await?;
         Ok(())
     }
 
@@ -135,8 +159,7 @@ impl PlayerDeck {
     async fn background_load_file_content(self) -> eyre::Result<()> {
         let file = self.get_file().await?;
 
-        let snapshot = 
-        tokio::task::spawn_blocking(move || {
+        let snapshot = tokio::task::spawn_blocking(move || {
             info!("Decoding file");
             let mut lock = file.blocking_write();
             let _ = lock.decode().unwrap();
@@ -146,10 +169,13 @@ impl PlayerDeck {
             DeckFilePayloadSnapshot::new(payload, preview)
         })
         .await?;
-        let _ = self.dispatcher.dispatch(AudioPlayerEvent::DeckFilePayloadUpdated {
-            id: self.id,
-            payload: snapshot,
-        }).await;
+        let _ = self
+            .dispatcher
+            .dispatch(AudioPlayerEvent::DeckFilePayloadUpdated {
+                id: self.id,
+                payload: snapshot,
+            })
+            .await;
         self.set_status(DeckFileStatus::Paused { offset: 0 })
             .await?;
         Ok(())
@@ -161,12 +187,13 @@ impl DeckFilePayloadSnapshot {
         Self {
             duration: payload.duration,
             sample_rate: payload.sample_rate,
-            channels_count: payload.channels.count(),
-            samples_count: payload.samples.len(),
+            channels_count: payload.channels as usize,
+            samples_count: payload.buffer.buffer.len(),
             preview: preview.map(|preview| DeckFilePreview {
+                original_sample_rate: payload.sample_rate,
                 sample_rate: preview.sample_rate,
-                channels_count: preview.channels.count(),
-                samples: preview.samples.clone(),
+                channels_count: preview.channels as usize,
+                samples: preview.buffer.buffer.clone(),
             }),
         }
     }

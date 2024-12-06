@@ -62,10 +62,9 @@ export async function load_audio_track(deckId: bigint, metadataId: bigint) {
     return await invoke("load_audio_track", { deckId, metadataId });
 }
 
-export async function set_deck_file_status(deckId: number, status: DeckFileStatus) {
+export async function set_deck_file_status(deckId: bigint, status: DeckFileStatus) {
     return await invoke("set_deck_file_status", { deckId, status });
 }
-
 
 export class EntryViewCursor {
     entry: EntryView;

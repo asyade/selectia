@@ -1,13 +1,17 @@
 
 import { MdAdd, MdFolder, MdFolderOpen, MdOutlineFolder, MdOutlineFolderOpen } from "react-icons/md";
 import { FaArrowLeft, FaChevronRight, FaPause, FaPlay, FaTasks, FaTrash } from "react-icons/fa";
-import { FaChevronDown, FaChevronUp, FaCircleXmark, FaEye, FaEyeSlash, FaGear, FaMinus, FaPen, FaSquare, FaWindowMaximize, FaXmark } from "react-icons/fa6";
+import { FaChevronDown, FaChevronUp, FaCircleXmark, FaEye, FaEyeSlash, FaGear, FaMinus, FaPen, FaSquare, FaVolumeLow, FaWindowMaximize, FaXmark } from "react-icons/fa6";
 
 interface IconProps {
     color?: string;
     width?: number;
     height?: number;
     className?: string;
+}
+
+export function IconVolumeLow(props: IconProps) {
+    return <FaVolumeLow width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} className={props.className} />;
 }
 
 export function IconCirclePlus(props: IconProps) {

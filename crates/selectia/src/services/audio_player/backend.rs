@@ -16,8 +16,10 @@ use tokio::sync::mpsc;
 pub type BackendSender = mpsc::Sender<BackendMessage>;
 pub type BackendReceiver = mpsc::Receiver<BackendMessage>;
 
+#[derive(PartialEq)]
 pub enum BackendMessage {
     CreateSource(SamplesSource),
+    DeleteSource(SamplesSource),
 }
 
 pub struct BackendHandle {
@@ -84,6 +86,9 @@ impl Backend {
                             .lock()
                             .await
                             .push(BufferedSamplesSource::new(source));
+                    }
+                    BackendMessage::DeleteSource(source) => {
+                        sources_clone.lock().await.retain(|s| s.provider != source);
                     }
                 }
             }

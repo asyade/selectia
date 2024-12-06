@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 export function useIdentifiedEvent<T>(
     name: string,
-    id: number,
+    id: number | bigint,
     callback: (event: T) => void,
 ): void {
     return useEvent(`${name}:${id}`, callback);

@@ -1,10 +1,8 @@
 import { Button } from "../atoms/Button";
 import {
     IconBack,
-    IconFolderOutline,
     IconGear,
     IconMinus,
-    IconPlay,
     IconWindowMaximize,
     IconXmark,
 } from "../atoms/Icon";

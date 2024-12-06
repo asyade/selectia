@@ -1,6 +1,14 @@
 use crate::prelude::*;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct Module {
+    pub id: i64,
+    pub name: String,
+    pub version: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Metadata {
     pub id: i64,
     pub hash: String,

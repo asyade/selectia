@@ -50,6 +50,13 @@ Selectia can upscale audio files to improve the playback quality.
 
 ### Playlists
 
+### Dependencies
+Unfortuatly selectia require a strong GPU to perform well. (it may run on CPU but it will be too slow for most people and may crash and some audio file).
+
+** Note ** Need more details here.
+> This fix somme issue https://stackoverflow.com/questions/78024121/cannot-convince-pytorch-to-install-with-cuda-windows-11
+Make sure to have CUDA Toolkit 11.1.0 installed.
+
 ## Development
 
 ### Build dependencies

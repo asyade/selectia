@@ -1,6 +1,7 @@
 use std::{ops::{Deref, DerefMut}, sync::RwLockReadGuard};
 
 use audio_player::{audio_player, AudioPlayerEvent, AudioPlayerService};
+use demuxer::{Demuxer, DemuxerEvent, DemuxerStatus, DemuxerTask};
 use dto::Events;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
@@ -25,6 +26,7 @@ pub struct App {
     pub(crate) state_machine: StateMachine,
     pub(crate) file_loader: FileLoader,
     pub(crate) interactive_list_context: ContextProvider<InteractiveListContext>,
+    pub(crate) demuxer: Demuxer,
 }
 
 pub struct AppState(pub Arc<RwLock<App>>);
@@ -33,12 +35,12 @@ pub type AppArg<'a> = State<'a, AppState>;
 
 impl App {
     pub async fn new() -> Self {
-        let settings = Settings::load().expect("Failed to load settings");
+        let settings = Settings::load().await.expect("Failed to load settings");
         let database = Database::new(&settings.database_path).await.unwrap();
         let audio_player = audio_player(database.clone());
         let state_machine = state_machine(database.clone());
         let file_loader = file_loader(state_machine.clone());
-
+        let demuxer = demuxer::demuxer(settings.demuxer_data_path.clone());
         let worker = worker(database.clone());
 
         App {
@@ -48,6 +50,7 @@ impl App {
             worker,
             state_machine,
             file_loader,
+            demuxer,
             interactive_list_context: ContextProvider::new(),
         }
     }
@@ -145,6 +148,7 @@ impl App {
 
         Ok(())
     }
+
 
     pub async fn schedule_file_analysis(&self, metadata_id: i64) -> eyre::Result<()> {
         let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });

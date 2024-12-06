@@ -15,7 +15,6 @@ export function FilterSubSectionDirectories(props: {
         const id = x.path();
         return <TreeItem key={id} node={x} />
     }), [tags]);
-    console.log(treeItems);
     return <div className={`${props.className} flex flex-wrap flex-col`}>
         {treeItems}
     </div>;

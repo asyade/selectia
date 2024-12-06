@@ -15,6 +15,7 @@ pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
 pub mod worker;
+pub mod demuxer;
 
 pub type ServiceSender<T> = sync::mpsc::Sender<T>;
 pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;

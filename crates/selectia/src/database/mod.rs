@@ -167,7 +167,6 @@ impl Database {
     }
 
     pub async fn get_entries(&self, filter: &EntryViewFilter) -> Result<Vec<EntryView>> {
-        info!("Getting entries");
         Ok(filter.query(&self.pool).await?)
     }
 
@@ -239,5 +238,26 @@ impl Database {
         .fetch_one(&self.pool)
         .await?;
         Ok(file)
+    }
+
+    pub async fn get_module(&self, name: &str) -> Result<models::Module> {
+        let module = sqlx::query_as!(models::Module, "SELECT * FROM installed_module WHERE name = ?", name)
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(module)
+    }
+
+    pub async fn upsert_module(&self, module: models::Module) -> Result<()> {
+        sqlx::query!("INSERT INTO installed_module (name, version, path) VALUES (?, ?, ?) ON CONFLICT(name) DO UPDATE SET version = ?, path = ?", module.name, module.version, module.path, module.version, module.path)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete_module(&self, name: &str) -> Result<()> {
+        sqlx::query!("DELETE FROM installed_module WHERE name = ?", name)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 }

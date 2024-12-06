@@ -113,7 +113,6 @@ impl EntryViewFilter {
             query = query.bind(name_id);
             query = query.bind(tag.id);
         }
-        info!("Generated query: {}", query.sql().to_string());
         let entries = query.fetch_all(pool).await?;
         Ok(entries)
     }

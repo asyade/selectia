@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use selectia::services::worker::tasks::TaskStatus as SelectiaTaskStatus;
 
-
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
@@ -80,6 +79,7 @@ pub struct DeckFilePayloadSnapshot {
 #[ts(export_to = "models.ts")]
 pub struct DeckFilePreview {
     pub sample_rate: u32,
+    pub original_sample_rate: u32,
     pub channels_count: usize,
     pub samples: Vec<f32>,
 }
@@ -213,7 +213,8 @@ impl From<selectia::services::audio_player::DeckFileMetadataSnapshot> for DeckFi
 
 impl From<selectia::services::audio_player::DeckFilePreview> for DeckFilePreview {
     fn from(preview: selectia::services::audio_player::DeckFilePreview) -> Self {
-        DeckFilePreview { sample_rate: preview.sample_rate, channels_count: preview.channels_count, samples: preview.samples }
+        DeckFilePreview { sample_rate: preview.sample_rate, original_sample_rate: preview.original_sample_rate, channels_count: preview.channels_count, samples: preview.samples }
     }
 }
+
 
