@@ -33,7 +33,7 @@ pub struct AudioFile {
 #[derive(Clone)]
 pub struct AudioFilePayload {
     pub duration: f64,
-    pub sample_rate: u32,
+    pub sample_rate: f64,
     pub channels: u32,
     pub buffer: InterleveadSampleBuffer<f32>,
 }
@@ -88,7 +88,7 @@ impl AudioFile {
     pub fn generate_preview(&mut self) -> Option<&AudioFilePayload> {
         if self.preview.is_none() {
             let payload = self.payload()?;
-            let preview = payload.resample(11025 / 10).unwrap();
+            let preview = payload.resample(10000.0).unwrap();
             self.preview = Some(preview);
         }
         self.preview.as_ref()
@@ -96,58 +96,6 @@ impl AudioFile {
 
     pub fn preview(&self) -> Option<&AudioFilePayload> {
         self.preview.as_ref()
-    }
-
-    pub fn detect_tempo(&mut self) -> AudioFileResult<f32> {
-        const WIN_SIZE: usize = 512;
-        const HOP_SIZE: usize = WIN_SIZE / 2;
-        let payload = self.payload().unwrap();
-        let resampled = payload.resample(44100).unwrap().into_mono().unwrap();
-
-        resampled.wav_export("resampled.wav").unwrap();
-        let mut tempo = aubio_rs::Tempo::new(
-            aubio_rs::OnsetMode::Energy,
-            WIN_SIZE,
-            HOP_SIZE,
-            resampled.sample_rate,
-        )
-        .unwrap();
-
-        let mut output = vec![0.0; 1];
-        let mut hop_buffer = vec![0.0; HOP_SIZE];
-
-        let mut beats = vec![];
-        resampled.buffer.buffer.chunks(HOP_SIZE).for_each(|chunk| {
-            if chunk.len() < HOP_SIZE {
-                return;
-            }
-            hop_buffer.copy_from_slice(chunk);
-            let c_source = aubio_rs::vec::FVec::from(&hop_buffer);
-            let c_output = aubio_rs::vec::FVecMut::from(&mut output);
-            tempo.do_(c_source, c_output).unwrap();
-
-            if output[0] != 0.0 {
-                beats.push(tempo.get_last_ms());
-            }
-        });
-
-        let interval = beats.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>();
-        let avg_interval = interval.iter().sum::<f32>() / interval.len() as f32;
-
-        let filtered_interval = interval
-            .clone()
-            .into_iter()
-            .filter(|&i| (i - avg_interval).abs() < avg_interval / 2.0)
-            .collect::<Vec<_>>();
-
-        let avg_filtered_interval =
-            filtered_interval.iter().sum::<f32>() / filtered_interval.len() as f32;
-
-        let bpm = 60.0 / avg_interval * 1000.0;
-        let bpm_filtered = 60.0 / avg_filtered_interval * 1000.0;
-        dbg!(bpm);
-        dbg!(bpm_filtered);
-        Ok(bpm)
     }
 
     pub fn decode_to_end(&mut self) -> AudioFileResult<&AudioFilePayload> {
@@ -171,7 +119,7 @@ impl AudioFile {
                     let spec = audio_buf.spec();
                     let sample_buf = sample_buf.get_or_insert_with(|| {
                         AnySampleBuffer::new(
-                            spec.rate,
+                            spec.rate as f64,
                             spec.channels.count() as u32,
                             SampleFormat::F32,
                         )
@@ -230,7 +178,6 @@ impl WaveExt for Wave {
         Ok(())
     }
 
-
     fn append_audio_buffer_mono(&mut self, audio_buf: &AudioBuffer<f32>) -> AudioFileResult<()> {
         match self.channels() {
             1 => {
@@ -281,6 +228,34 @@ impl EncodedAudioFile {
         Self::from_source(file, path)
     }
 
+    pub fn total_frames_count(mut self) -> AudioFileResult<u64> {
+        let mut total = 0;
+
+        let track = self
+            .format
+            .default_track()
+            .ok_or(AudioFileError::NoDefaultTrack)?;
+        let track_id = track.id;
+        let mut decoder = symphonia::default::get_codecs()
+            .make(&track.codec_params, &Default::default())
+            .expect("Failed to create decoder");
+        while let Ok(packet) = self.format.next_packet() {
+            if packet.track_id() != track_id {
+                continue;
+            }
+            match decoder.decode(&packet) {
+                Ok(audio_buf) => {
+                    total += audio_buf.frames() as u64;
+                }
+                Err(Error::DecodeError(e)) => {
+                    error!("Decode error: {:?}", e);
+                }
+                Err(_) => break,
+            }
+        }
+        Ok(total)
+    }
+
     pub fn read_wave_until<F: FnMut(&Wave) -> AudioFileResult<bool>>(
         mut self,
         mut callback: F,
@@ -323,7 +298,7 @@ impl EncodedAudioFile {
         self.decoded_iterator(|audio_buf| {
             let spec = audio_buf.spec();
             let sample_buf = sample_buf.get_or_insert_with(|| {
-                AnySampleBuffer::new(spec.rate, spec.channels.count() as u32, SampleFormat::F32)
+                AnySampleBuffer::new(spec.rate as f64, spec.channels.count() as u32, SampleFormat::F32)
             });
             sample_buf.append_interleaved(&audio_buf.as_audio_buffer_ref());
             Ok(true)
@@ -365,7 +340,6 @@ impl EncodedAudioFile {
             match decoder.decode(&packet) {
                 Ok(audio_buf) => {
                     if converted_buf.is_none() {
-                        let spec = audio_buf.spec();
                         converted_buf = Some(AudioBuffer::new(
                             audio_buf.capacity() as u64,
                             audio_buf.spec().clone(),
@@ -393,30 +367,24 @@ impl AudioFilePayload {
         match wave.channels() {
             1 => Ok(Self {
                 duration: wave.duration(),
-                sample_rate: wave.sample_rate() as u32,
+                sample_rate: wave.sample_rate(),
                 channels: 1,
-                buffer: InterleveadSampleBuffer::from_samples(wave.sample_rate() as u32, 1, wave.channel(0).to_vec()),
+                buffer: InterleveadSampleBuffer::from_samples(
+                    wave.sample_rate(),
+                    1,
+                    wave.channel(0).to_vec(),
+                ),
             }),
             _ => todo!(),
         }
     }
 
-    pub fn get_rms_region(&self, min_rms: f32, desired_region_size: usize) -> Option<Range<usize>> {
-        if self.buffer.buffer.len() < desired_region_size {
-            None
-        } else {
-            Some(0..desired_region_size)
-        }
-    }
-
-    pub fn detect_bpm(&self) -> AudioFileResult<f32> {
-        let onesets = self.detect_onesets(128 as usize)?;
-        dbg!(onesets);
-        Ok(0.0)
-    }
-
     pub fn detect_onesets(&self, win_size: usize) -> AudioFileResult<Vec<AudioBeatOneset>> {
-        let HOP_SIZE: usize = win_size;
+        // Aubio only supports integer sample rates
+        if (self.sample_rate - self.sample_rate.round()).abs() > 0.0001 {
+            return Err(AudioFileError::InvalidSampleRate);
+        }
+        let HOP_SIZE: usize = 128;
 
         let mut output = vec![0.0; 1];
         let mut hop_buffer = vec![0.0; HOP_SIZE];
@@ -425,7 +393,7 @@ impl AudioFilePayload {
             aubio_rs::OnsetMode::SpecDiff,
             win_size,
             HOP_SIZE,
-            self.sample_rate,
+            self.sample_rate as u32,
         )
         .unwrap();
 
@@ -549,7 +517,7 @@ impl AudioFilePayload {
 
     /// Resample the audio file to the given sample rate.
     /// The audio file will be converted to f32 samples (returned payload is always f32).
-    pub fn resample(&self, sample_rate: u32) -> AudioFileResult<AudioFilePayload> {
+    pub fn resample(&self, sample_rate: f64) -> AudioFileResult<AudioFilePayload> {
         let interpolator = dasp::interpolate::linear::Linear::new(0.0, 0.0);
         let signal = dasp::signal::from_iter(self.buffer.buffer.iter().copied());
         let resampler =
@@ -564,17 +532,18 @@ impl AudioFilePayload {
     }
 
     /// *WIP*
-    pub fn wav_export(&self, path: impl AsRef<Path>) -> AudioFileResult<()> {
+    pub fn wav_export(&self, sample_rate: u32, path: impl AsRef<Path>) -> AudioFileResult<()> {
+        let payload = self.resample(sample_rate as f64)?;
         let spec = hound::WavSpec {
             channels: self.channels as u16,
-            sample_rate: self.sample_rate,
+            sample_rate: sample_rate,
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
         let file = File::create(path)?;
         let mut writer = hound::WavWriter::new(file, spec)?;
-        let mut sample_writer = writer.get_i16_writer(self.buffer.buffer.len() as u32);
-        for sample in self.buffer.buffer.iter() {
+        let mut sample_writer = writer.get_i16_writer(payload.buffer.buffer.len() as u32);
+        for sample in payload.buffer.buffer.iter() {
             let next = sample.to_sample::<i16>();
             sample_writer.write_sample(next);
         }
@@ -600,50 +569,14 @@ pub fn dc_blocker<F: Real>(f: F, q: F) -> An<FixedSvf<F, HighpassMode<F>>> {
 }
 
 #[derive(Clone, Debug)]
-pub struct AudioRmsRegion {
-    start: usize,
-    end: usize,
-    rms: f32,
-}
-
-#[derive(Clone, Debug)]
 pub struct AudioBeatOneset {
-    offset: usize,
-    duration: usize,
-    confidence: f32,
-    bpm: f32,
+    pub offset: usize,
+    pub duration: usize,
+    pub confidence: f32,
+    pub bpm: f32,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    const TEST_1_FILE: &str = "../../dataset/drums-160.flac";
-
-    #[test]
-    fn downsample() {
-        let mut audio_file = AudioFile::open(TEST_1_FILE).unwrap();
-        audio_file.decode_to_end().unwrap();
-        let payload = audio_file.payload().unwrap().clone().into_mono().unwrap();
-
-        let tempo = audio_file.detect_tempo().unwrap();
-        println!("Tempo: {}", tempo);
-
-        // let mut planner = FftPlanner::new();
-        // let fft = planner.plan_fft_forward(samples.len());
-        // let mut buffer: Vec<Complex<f32>> = samples.iter()
-        //     .map(|&x| Complex { re: x, im: 0.0 })
-        //     .collect();
-        // fft.process(&mut buffer);
-
-        // let spectrum: Vec<f32> = buffer.iter().map(|c| c.norm()).collect();
-
-        // let fft_size = samples.len();
-        // let bin_width = payload.sample_rate as f32 / fft_size as f32; // Δf = Fs / N
-
-        // for (i, freq_component) in buffer.iter().enumerate() {
-        //     let frequency = i as f32 * bin_width; // Frequency in Hz
-        //     let magnitude = freq_component.norm(); // Magnitude of the frequency component
-        //     println!("Bin {}: Frequency = {:.2} Hz, Magnitude = {:.2}", i, frequency, magnitude);
-        // }
-    }
 }

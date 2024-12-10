@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::prelude::*;
+use crate::{analyser::bpm_analyser::{BpmAnalyser, BpmAnalyserOptions}, prelude::*};
 use chrono::{DateTime, Utc};
 use demucs::backend::DemuxResult;
 use demuxer::{Demuxer, DemuxerTask};
@@ -90,7 +90,7 @@ impl FileAnalysisTask {
     #[instrument(skip(context))]
     pub async fn process(&self, context: TaskContext) -> Result<()> {
         use fundsp::prelude::*;
-        const MIN_ANALYSIS_DURATION: f64 = 120.0;
+        const MIN_ANALYSIS_DURATION: f64 = 180.0;
         const MAX_ANALYSIS_DURATION: f64 = 480.0;
         const MIN_ANALYSIS_AMPLITUDE: f32 = 0.7;
         const MAX_ANALYSIS_SAMPLE_RATE: u32 = 48000;
@@ -104,6 +104,7 @@ impl FileAnalysisTask {
         let (temp_dir, analyzed_audio_file) = tokio::task::spawn_blocking(move || {
             let dir = tempdir::TempDir::new("task_analysis").unwrap();
             let encoded_file = EncodedAudioFile::from_file(&input_file_path)?;
+
             // TODO: ensure that the payload actualy contains some beats (not just slilence or too quite portion)
             let analysed_wave = encoded_file.read_mono_wave_until(|f| {
                 let duration = f.duration();
@@ -151,9 +152,10 @@ impl FileAnalysisTask {
             );
             wave.normalize();
             let payload = AudioFilePayload::from_wave(wave)?;
-            let payload = payload.resample(48000)?;
-            let bpm = payload.detect_bpm()?;
-            payload.wav_export("C:\\Users\\corbe\\Desktop\\test.wav")?;
+            let payload = payload.resample(44100.0)?;
+            let onesets = payload.detect_onesets(512 as usize)?;
+            let bpm_analyser = BpmAnalyser::new(BpmAnalyserOptions { range: (80.0, 280.0) }, onesets).get_result().unwrap();
+            info!(bpm_analyser=?bpm_analyser, "BPM analysis completed");
             AudioFileResult::Ok(())
         }).await??;
 

@@ -69,7 +69,7 @@ pub struct DeckFileMetadataSnapshot {
 #[ts(export_to = "models.ts")]
 pub struct DeckFilePayloadSnapshot {
     pub duration: f64,
-    pub sample_rate: u32,
+    pub sample_rate: f64,
     pub channels_count: usize,
     pub samples_count: usize,
     pub preview: Option<DeckFilePreview>,
@@ -78,8 +78,8 @@ pub struct DeckFilePayloadSnapshot {
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
 pub struct DeckFilePreview {
-    pub sample_rate: u32,
-    pub original_sample_rate: u32,
+    pub sample_rate: f64,
+    pub original_sample_rate: f64,
     pub channels_count: usize,
     pub samples: Vec<f32>,
 }

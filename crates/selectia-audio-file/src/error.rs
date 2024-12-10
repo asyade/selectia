@@ -19,6 +19,8 @@ pub enum AudioFileError {
     Hound(#[from] hound::Error),
     #[error("Index out of bounds")]
     OutOfBounds,
+    #[error("Invalid sample rate")]
+    InvalidSampleRate,
 }
 
 pub type AudioFileResult<T> = Result<T, AudioFileError>;

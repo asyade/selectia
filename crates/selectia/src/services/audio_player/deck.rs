@@ -51,7 +51,7 @@ pub struct DeckFileMetadataSnapshot {
 #[derive(Clone, Debug)]
 pub struct DeckFilePayloadSnapshot {
     pub duration: f64,
-    pub sample_rate: u32,
+    pub sample_rate: f64,
     pub channels_count: usize,
     pub samples_count: usize,
     pub preview: Option<DeckFilePreview>,
@@ -59,8 +59,8 @@ pub struct DeckFilePayloadSnapshot {
 
 #[derive(Clone, Debug)]
 pub struct DeckFilePreview {
-    pub original_sample_rate: u32,
-    pub sample_rate: u32,
+    pub original_sample_rate: f64,
+    pub sample_rate: f64,
     pub channels_count: usize,
     pub samples: Vec<f32>,
 }
