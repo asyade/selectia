@@ -11,3 +11,4 @@ dasp = { version = "0.11.0", features = ["all"] }
 aubio-rs = "0.2"
 # hound = {path = "../../../hound"}
 hound = "3.5.0"
+fundsp = "0.20.0"

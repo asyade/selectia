@@ -18,11 +18,13 @@ export type DeckView = { file: DeckFileView | null, id: number, };
 
 export type EntryView = { metadata_id: bigint, metadata_hash: string, tags: Array<MetadataTagView>, };
 
+export type FileVariation = { id: bigint, path: string, title: string, stem: string | null, };
+
 export type FilterSelection = { directories: Array<string>, tags: { [key in number]?: Array<TagSelection> }, };
 
 export type MetadataTagView = { tag_id: bigint, metadata_tag_id: bigint, tag_name_id: bigint, tag_value: string, metadata_id: bigint, };
 
-export type Models = { "DeckFileMetadataSnapshot": DeckFileMetadataSnapshot } | { "DeckFilePayloadSnapshot": DeckFilePayloadSnapshot } | { "DeckFileStatus": DeckFileStatus } | { "AppError": AppError } | { "ContextId": ContextId } | { "WorkerQueueTask": WorkerQueueTask } | { "TaskStatus": TaskStatus } | { "DeckView": DeckView } | { "DeckFileView": DeckFileView } | { "TagSelection": TagSelection } | { "FilterSelection": FilterSelection } | { "EntryView": EntryView } | { "MetadataTagView": MetadataTagView } | { "TagName": TagName } | { "TagView": TagView };
+export type Models = { "DeckFileMetadataSnapshot": DeckFileMetadataSnapshot } | { "DeckFilePayloadSnapshot": DeckFilePayloadSnapshot } | { "DeckFileStatus": DeckFileStatus } | { "AppError": AppError } | { "ContextId": ContextId } | { "WorkerQueueTask": WorkerQueueTask } | { "TaskStatus": TaskStatus } | { "DeckView": DeckView } | { "DeckFileView": DeckFileView } | { "TagSelection": TagSelection } | { "FilterSelection": FilterSelection } | { "EntryView": EntryView } | { "MetadataTagView": MetadataTagView } | { "TagName": TagName } | { "TagView": TagView } | { "FileVariation": FileVariation };
 
 export type TagName = { id: bigint, name: string, use_for_filtering: boolean, };
 

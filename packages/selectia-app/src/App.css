@@ -10,6 +10,7 @@
     --selectia-bg-secondary: #21222c;
     --selectia-text-primary: #64748b;
     --selectia-text-secondary: #e2e8f0;
+    --selectia-bg-highlight: #64748b27;
 }
 .bg-primary {
     background-color: var(--selectia-bg-primary);
@@ -25,6 +26,14 @@
 
 .text-secondary {
     color: var(--selectia-text-secondary);
+}
+
+.bg-highlight {
+    background-color: var(--selectia-bg-highlight);
+}
+
+.hover\:bg-highlight:hover {
+    background-color: var(--selectia-bg-highlight);
 }
 
 body {

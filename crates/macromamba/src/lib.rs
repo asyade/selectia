@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use eyre::Result;
 use futures::StreamExt;
 use std::hash::Hash;
@@ -165,11 +167,6 @@ impl MambaBinary {
         Ok(output.trim().to_string())
     }
 
-    pub async fn activate(&self) -> Result<()> {
-        self.base_command().await.arg("--help").raw_stdout().await?;
-        Ok(())
-    }
-
     #[cfg(target_os = "windows")]
     #[instrument]
     pub async fn init(&self) -> Result<()> {
@@ -240,7 +237,6 @@ pub struct CommandResult {
 
 #[derive(Debug)]
 pub struct ActivatedCommand {
-    mamba_path: PathBuf,
     mamba_root_path: PathBuf,
     environment: HashMap<String, String>,
     args: Vec<String>,
@@ -248,13 +244,12 @@ pub struct ActivatedCommand {
 
 impl ActivatedCommand {
     pub fn new(
-        mamba_path: PathBuf,
+        _mamba_path: PathBuf,
         mamba_root_path: PathBuf,
         environment: HashMap<String, String>,
         command_name: &str,
     ) -> Self {
         Self {
-            mamba_path,
             mamba_root_path,
             environment,
             args: vec![command_name.to_string()],

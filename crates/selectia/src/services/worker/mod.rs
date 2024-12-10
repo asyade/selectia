@@ -1,5 +1,6 @@
+use demuxer::Demuxer;
 use models::Task as TaskModel;
-use tasks::{BackgroundTask, TaskPayload, TaskStatus};
+use tasks::{BackgroundTask, TaskContext, TaskPayload, TaskStatus};
 
 use crate::prelude::*;
 use crate::services::{AddressableService, Task};
@@ -30,13 +31,14 @@ pub enum WorkerEvent {
 
 pub type Worker = AddressableServiceWithDispatcher<WorkerTask, WorkerEvent>;
 
-pub fn worker(database: Database) -> Worker {
+pub fn worker(demuxer: Demuxer, database: Database) -> Worker {
     AddressableServiceWithDispatcher::new(move |receiver, sender, dispatcher| {
-        worker_task(database, receiver, sender, dispatcher)
+        worker_task(demuxer, database, receiver, sender, dispatcher)
     })
 }
 
 async fn worker_task(
+    demuxer: Demuxer,
     database: Database,
     mut receiver: sync::mpsc::Receiver<WorkerTask>,
     sender: sync::mpsc::Sender<WorkerTask>,
@@ -100,7 +102,16 @@ async fn worker_task(
                         removed: false,
                     })
                     .await?;
-                if let Err(e) = pool.spawn(task, database.clone()).await {
+                if let Err(e) = pool
+                    .spawn(
+                        task,
+                        TaskContext {
+                            demuxer: demuxer.clone(),
+                            database: database.clone(),
+                        },
+                    )
+                    .await
+                {
                     error!("Error spawning task: {:?}", e);
                 }
             } else {
@@ -148,10 +159,10 @@ impl WorkerPool {
         };
     }
 
-    pub async fn spawn(&mut self, task: TaskModel, database: Database) -> Result<()> {
+    pub async fn spawn(&mut self, task: TaskModel, context: TaskContext) -> Result<()> {
         info!("Worker spawning task: {:?}", task);
         let task = BackgroundTask::try_from(task)?;
-        let handle = tokio::spawn(process_task(database, task.clone(), self.notify.clone()));
+        let handle = tokio::spawn(process_task(context, task.clone(), self.notify.clone()));
         self.background_handles.insert(task.id, (handle, task));
         Ok(())
     }
@@ -162,12 +173,12 @@ impl WorkerPool {
 }
 
 async fn process_task(
-    database: Database,
+    context: TaskContext,
     task: BackgroundTask,
     notify: sync::mpsc::Sender<WorkerTask>,
 ) -> Result<()> {
     info!("Processing task: {:?}", task);
-    if let Err(e) = task.process(database).await {
+    if let Err(e) = task.process(context).await {
         error!("Error processing task: {:?}", e);
         notify
             .send(WorkerTask::TaskDone {
@@ -186,11 +197,9 @@ async fn process_task(
     Ok(())
 }
 
-impl Task for WorkerTask {
-}
+impl Task for WorkerTask {}
 
-impl Task for WorkerEvent {
-}
+impl Task for WorkerEvent {}
 
 pub trait WorkerDatabaseExt {
     fn enqueue_task(&self, task: TaskPayload) -> impl Future<Output = Result<i64>> + Send;

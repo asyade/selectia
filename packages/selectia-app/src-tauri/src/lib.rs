@@ -33,8 +33,11 @@ pub async fn run() {
             get_worker_queue_task,
             create_audio_deck,
             get_audio_decks,
-            load_audio_track,
+            load_audio_track_from_metadata,
+            load_audio_track_from_variation,
             set_deck_file_status,
+            extract_stems,
+            get_file_variations_for_metadata,
         ])
         .setup(setup)
         .run(tauri::generate_context!())

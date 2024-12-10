@@ -133,6 +133,17 @@ pub struct TagView {
     pub name_id: i64,
 }
 
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export_to = "models.ts")]
+pub struct FileVariation {
+    pub id: i64,
+    pub path: String,
+    pub title: String,
+    pub stem: Option<String>,
+}
+
+
 #[derive(Serialize, Deserialize, Clone, TS)]
 #[ts(export_to = "models.ts")]
 pub enum Models {
@@ -151,6 +162,7 @@ pub enum Models {
     MetadataTagView(MetadataTagView),
     TagName(TagName),
     TagView(TagView),
+    FileVariation(FileVariation),
 }
 
 impl From<SelectiaTaskStatus> for TaskStatus {
@@ -218,3 +230,12 @@ impl From<selectia::services::audio_player::DeckFilePreview> for DeckFilePreview
 }
 
 
+impl From<selectia::database::models::DecodedFileVariation> for FileVariation {
+    fn from(variation: selectia::database::models::DecodedFileVariation) -> Self {
+        let (title, stem) = match variation.metadata {
+            Some(metadata) => (metadata.title, metadata.stem),
+            None => (variation.path.clone(), None),
+        };
+        FileVariation { id: variation.id, path: variation.path, title, stem }
+    }
+}

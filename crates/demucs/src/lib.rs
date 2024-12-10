@@ -1,4 +1,6 @@
-use backend::{Backend, FromBackendRequest, ToProcessRequest};
+#![allow(unused_imports)]
+
+use backend::{Backend, DemuxResult, FromBackendRequest, ToProcessRequest};
 use tokio::sync::Mutex;
 use tracing::{error, info, instrument};
 
@@ -14,7 +16,6 @@ const ENVIRONMENT_NAME: &str = "demucs";
 
 #[derive(Clone)]
 pub struct Demucs {
-    data_path: PathBuf,
     conda_env_file: PathBuf,
     backend_script: PathBuf,
     environment: Arc<RwLock<macromamba::Environment>>,
@@ -39,7 +40,6 @@ impl Demucs {
         let backend_script = data_path.join("backend.py");
 
         let instance = Self {
-            data_path,
             conda_env_file,
             backend_script,
             environment: Arc::new(RwLock::new(environment)),
@@ -80,7 +80,7 @@ impl Demucs {
         {
             let environ = self.environment.read().await;
             if let Err(e) = environ.load(ENVIRONMENT_NAME).await {
-                error!("Demucs environment is not installed !");
+                error!("Demucs environment is not installed: {}", e);
                 *self.status.write().await = Status::NotInstalled;
                 return Ok(())
             }
@@ -100,7 +100,6 @@ impl Demucs {
                         let version = backend_clone.version().await.unwrap();
                         info!("Backend connected, demucs version: {}, torch device: {}", version.version, version.torch_device);
                     },
-                    _ => {}
                 }
             }
         });
@@ -109,6 +108,20 @@ impl Demucs {
             backend: Arc::new(Mutex::new(backend)),
         };
         Ok(())
+    }
+
+    pub async fn demux(&self, input: PathBuf, output: PathBuf) -> Result<DemuxResult> {
+        match &*self.status.read().await {
+            Status::Ready { backend } => {
+                info!("Demuxing {} to {}", input.display(), output.display());
+                let result = backend.lock().await.demux(input, output).await?;
+                Ok(result)
+            }
+            _ => {
+                error!("Demucs not ready, failed to process demux task");
+                eyre::bail!("Demucs not ready, failed to process demux task");
+            }
+        }
     }
 }
 

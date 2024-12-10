@@ -1,9 +1,18 @@
-use std::thread;
+use std::{
+    panic::panic_any,
+    thread,
+    time::{Duration, Instant},
+};
 
-use crate::{analyser::file_analyser::FileAnalyser, prelude::*};
+use crate::prelude::*;
 use chrono::{DateTime, Utc};
-use eyre::bail;
-use models::Task;
+use demucs::backend::DemuxResult;
+use demuxer::{Demuxer, DemuxerTask};
+use eyre::{bail, OptionExt};
+use models::{FileVariationMetadata, Task};
+use selectia_audio_file::{
+    audio_file::{AudioFilePayload, EncodedAudioFile}, error::{AudioFileError, AudioFileResult}, AudioFile
+};
 
 #[derive(Clone, Debug)]
 pub struct BackgroundTask {
@@ -36,11 +45,23 @@ impl TryFrom<&str> for TaskStatus {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum TaskPayload {
     FileAnalysis(FileAnalysisTask),
+    StemExtraction(StemExtractionTask),
+}
+
+pub struct TaskContext {
+    pub demuxer: Demuxer,
+    pub database: Database,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 pub struct FileAnalysisTask {
+    pub metadata_id: i64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+pub struct StemExtractionTask {
     pub metadata_id: i64,
 }
 
@@ -57,25 +78,150 @@ impl TryFrom<Task> for BackgroundTask {
 }
 
 impl BackgroundTask {
-    pub async fn process(&self, database: Database) -> Result<()> {
+    pub async fn process(&self, context: TaskContext) -> Result<()> {
         match &self.payload {
-            TaskPayload::FileAnalysis(task) => task.process(database).await,
+            TaskPayload::FileAnalysis(task) => task.process(context).await,
+            TaskPayload::StemExtraction(task) => task.process(context).await,
         }
     }
 }
 
 impl FileAnalysisTask {
-    pub async fn process(&self, database: Database) -> Result<()> {
-        info!("Processing file analysis task: {:?}", self);
-        let file = database.get_file_from_metadata_id(self.metadata_id).await?;
-        let analyser = FileAnalyser::new(PathBuf::from(file.path));
+    #[instrument(skip(context))]
+    pub async fn process(&self, context: TaskContext) -> Result<()> {
+        use fundsp::prelude::*;
+        const MIN_ANALYSIS_DURATION: f64 = 120.0;
+        const MAX_ANALYSIS_DURATION: f64 = 480.0;
+        const MIN_ANALYSIS_AMPLITUDE: f32 = 0.7;
+        const MAX_ANALYSIS_SAMPLE_RATE: u32 = 48000;
 
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        let _thread = thread::spawn(move || {
-            let result = analyser.analyse();
-            tx.send(result).unwrap();
-        });
-        let _result = rx.await?.unwrap();
+        let file = context
+            .database
+            .get_file_from_metadata_id(self.metadata_id)
+            .await?;
+        let input_file_path = PathBuf::from(&file.path);
+
+        let (temp_dir, analyzed_audio_file) = tokio::task::spawn_blocking(move || {
+            let dir = tempdir::TempDir::new("task_analysis").unwrap();
+            let encoded_file = EncodedAudioFile::from_file(&input_file_path)?;
+            // TODO: ensure that the payload actualy contains some beats (not just slilence or too quite portion)
+            let analysed_wave = encoded_file.read_mono_wave_until(|f| {
+                let duration = f.duration();
+                Ok(duration < MIN_ANALYSIS_DURATION)
+            })?;
+
+            let audio_to_split = dir.path().join("analyzed.wav");
+            analysed_wave.save_wav32(&audio_to_split)?;
+
+            let export_dir = dir.path().join("export");
+            info!(
+                stem_path = export_dir.to_str().unwrap(),
+                sample_rate = analysed_wave.sample_rate(),
+                duration = analysed_wave.duration(),
+                "Payload ready for stem extraction"
+            );
+            AudioFileResult::Ok((dir, audio_to_split))
+        })
+        .await??;
+
+        let (callback, recv) = TaskCallback::new();
+        let task = DemuxerTask::Demux {
+            input: analyzed_audio_file.clone(),
+            output: temp_dir.path().join("stems"),
+            callback,
+        };
+
+        let begin = Instant::now();
+        context.demuxer.send(task).await?;
+        let demux_result = recv.wait().await?;
+        info!(
+            duration = begin.elapsed().as_secs_f32(),
+            "Stem extraction task completed"
+        );
+
+        let drum_stem = demux_result.get_stem(DemuxResult::DRUMS).ok_or(AudioFileError::AudioSeparationFailed)?;
+        let drum_file_path = PathBuf::from(drum_stem.path.as_str());
+
+        tokio::task::spawn_blocking(move || {
+            let wave = EncodedAudioFile::from_file(drum_file_path)
+                .and_then(|f| f.read_mono_wave_until(|w| Ok(true)))?;
+            let mut wave = wave.filter(
+                wave.duration(),
+                &mut (highpass_hz(38.0, 0.7) >> lowpass_hz(1000.0, 0.7)),
+            );
+            wave.normalize();
+            let payload = AudioFilePayload::from_wave(wave)?;
+            let payload = payload.resample(48000)?;
+            let bpm = payload.detect_bpm()?;
+            payload.wav_export("C:\\Users\\corbe\\Desktop\\test.wav")?;
+            AudioFileResult::Ok(())
+        }).await??;
+
+        // .await??;
+        // let drum_file_payload = drum_file_payload
+        //     .into_mono()
+        //     .unwrap()
+        //     .into_processed_payload(&mut (highpass_hz(38.0, 0.7) >> lowpass_hz(1000.0, 0.7)))
+        //     .unwrap();
+
+        // drum_file_payload
+        //     .wav_export("C:\\Users\\corbe\\Desktop\\test.wav")
+        //     .unwrap();
+
+        // let drum_bpm = drum_file_payload.detect_bpm().unwrap();
+        // dbg!(drum_bpm);
+
+        // info!("Stem extraction task completed !");
+        // dbg!(result);
+        // // Find differents BPM regions (a region is a slice of the track with a consistent BPM, consistent mean that the BPM do not vary more than X perecent from the average BPM)
+
+        Ok(())
+    }
+}
+
+impl StemExtractionTask {
+    pub async fn process(&self, context: TaskContext) -> Result<()> {
+        info!("Processing stem extraction task: {:?}", self);
+        let file = context
+            .database
+            .get_file_from_metadata_id(self.metadata_id)
+            .await?;
+
+        let input_path = PathBuf::from(&file.path);
+        let mut output_path = PathBuf::from(&file.path);
+        output_path.set_extension("stems");
+
+        let (callback, recv) = TaskCallback::new();
+        context
+            .demuxer
+            .send(DemuxerTask::Demux {
+                input: PathBuf::from(file.path),
+                output: output_path.clone(),
+                callback,
+            })
+            .await?;
+        info!("Waiting for stem extraction task to complete");
+        let result = recv.wait().await?;
+        info!("Stem extraction task completed, creating file variations");
+        for variation in result.stems.iter() {
+            let metadata = FileVariationMetadata {
+                stem: Some(variation.stem.clone()),
+                title: input_path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+            };
+            match context
+                .database
+                .create_file_variation(file.id, &variation.path, metadata)
+                .await
+            {
+                Ok(_) => info!("Created file variation: {}", variation.path),
+                Err(e) => error!("Failed to create file variation: {}", e),
+            }
+        }
         Ok(())
     }
 }

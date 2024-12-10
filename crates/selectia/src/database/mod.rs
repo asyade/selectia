@@ -1,3 +1,5 @@
+use models::FileVariationMetadata;
+
 use crate::prelude::*;
 use crate::views::entry_view::*;
 pub mod models;
@@ -241,9 +243,13 @@ impl Database {
     }
 
     pub async fn get_module(&self, name: &str) -> Result<models::Module> {
-        let module = sqlx::query_as!(models::Module, "SELECT * FROM installed_module WHERE name = ?", name)
-            .fetch_one(&self.pool)
-            .await?;
+        let module = sqlx::query_as!(
+            models::Module,
+            "SELECT * FROM installed_module WHERE name = ?",
+            name
+        )
+        .fetch_one(&self.pool)
+        .await?;
         Ok(module)
     }
 
@@ -259,5 +265,68 @@ impl Database {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    pub async fn create_file_variation(
+        &self,
+        file_id: i64,
+        path: &str,
+        metadata: FileVariationMetadata,
+    ) -> Result<()> {
+        let metadata_str = serde_json::to_string(&metadata).unwrap();
+        sqlx::query!(
+            "INSERT INTO file_variation (file_id, path, metadata) VALUES (?, ?, ?)",
+            file_id,
+            path,
+            metadata_str
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_file_variation_from_id(&self, file_variation_id: i64) -> Result<models::DecodedFileVariation> {
+        let file_variation = sqlx::query_as!(models::FileVariation, "SELECT * FROM file_variation WHERE id = ?", file_variation_id)
+            .fetch_one(&self.pool)
+            .await?;
+        let metadata: Option<FileVariationMetadata> = file_variation
+            .metadata
+            .as_ref()
+            .and_then(|metadata| serde_json::from_str(metadata).ok());
+        Ok(models::DecodedFileVariation {
+            id: file_variation.id,
+            file_id: file_variation.file_id,
+            path: file_variation.path.clone(),
+            metadata,
+        })
+    }
+
+    pub async fn get_file_variations(
+        &self,
+        file_id: i64,
+    ) -> Result<Vec<models::DecodedFileVariation>> {
+        let file_variations = sqlx::query_as!(
+            models::FileVariation,
+            "SELECT * FROM file_variation WHERE file_id = ?",
+            file_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        let decoded_file_variations = file_variations
+            .iter()
+            .map(|file_variation| {
+                let metadata: Option<FileVariationMetadata> = file_variation
+                    .metadata
+                    .as_ref()
+                    .and_then(|metadata| serde_json::from_str(metadata).ok());
+                models::DecodedFileVariation {
+                    id: file_variation.id,
+                    file_id: file_variation.file_id,
+                    path: file_variation.path.clone(),
+                    metadata,
+                }
+            })
+            .collect();
+        Ok(decoded_file_variations)
     }
 }

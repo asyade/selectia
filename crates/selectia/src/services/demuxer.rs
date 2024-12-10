@@ -1,4 +1,4 @@
-use demucs::Demucs;
+use demucs::{backend::DemuxResult, Demucs};
 
 use crate::prelude::*;
 pub type Demuxer = AddressableServiceWithDispatcher<DemuxerTask, DemuxerEvent>;
@@ -13,11 +13,6 @@ pub enum DemuxerTask {
     StatusUpdate {
         status: DemuxerStatus,
     },
-}
-
-#[derive(Clone, Debug)]
-pub struct DemuxResult {
-    pub output: PathBuf,
 }
 
 #[derive(Clone)]
@@ -89,12 +84,15 @@ async fn demuxer_task(
                 output,
                 callback,
             } => {
-                match current_status {
+                match &current_status {
                     DemuxerStatus::Ready { demucs } => {
-                        todo!()
-                        // demucs.demux(input, output).await?;
+                        tokio::fs::create_dir_all(&output).await?;
+                        let result = demucs.demux(input, output.clone()).await?;
+                        callback.resolve(result).await?;
                     }
-                    _ => {}
+                    _ => {
+                        error!("Demuxer not ready, failed to process demux task");
+                    }
                 }
             }
         }

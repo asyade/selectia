@@ -31,6 +31,14 @@ CREATE TABLE metadata (
     hash TEXT NOT NULL
 );
 
+CREATE TABLE file_variation (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    file_id INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    metadata TEXT,
+    FOREIGN KEY (file_id) REFERENCES file(id)
+);
+
 CREATE TABLE metadata_tag (
     metadata_id INTEGER NOT NULL,
     tag_id INTEGER NOT NULL,

@@ -8,9 +8,17 @@ import { TextInput } from "../../atoms/TextInput";
 import { InteractiveTableLabel } from "./InteractiveTableLabel";
 import { ItemTypes } from "../../pages/ManagerPage";
 import { useDrag, useDrop } from "react-dnd";
-import { IconTrash } from "../../atoms/Icon";
+import {
+    IconChevronDown,
+    IconChevronLeft,
+    IconChevronRight,
+    IconEdit,
+    IconTrash,
+} from "../../atoms/Icon";
 import {
     EntryViewCursor,
+    extract_stems,
+    get_file_variations_for_metadata,
     interactive_list_create_tag,
     interactive_list_get_tag_creation_suggestions,
     TAG_NAME_ID_DIRECTORY,
@@ -18,11 +26,13 @@ import {
     TAG_NAME_ID_TITLE,
 } from "../../../selectia-tauri";
 import {
+    FileVariation,
     MetadataTagView,
     TagName,
     TagView,
 } from "../../../selectia-tauri/dto/models";
 import { DropZoneDecorator } from "../../molecules/DropZoneDecorator";
+import { DropDownButton } from "../../molecules/DropDownButton";
 
 interface InteractiveTableRowProps {
     entry: EntryViewCursor;
@@ -34,16 +44,7 @@ export function InteractiveTableRow(props: InteractiveTableRowProps) {
     const [expanded, setExpanded] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
-    useClickOutside(ref, (event) => {
-        if (event.ctrlKey) {
-            return;
-        }
-        setExpanded(false);
-    });
-
-    const title_component = <InteractiveTableRowTitle {...props} />;
-
-    const handleClick = (event: React.MouseEvent) => {
+    const handleExpand = (event: React.MouseEvent) => {
         if (event.detail == 2) {
             props.onPlay?.(props.entry);
         } else {
@@ -51,14 +52,26 @@ export function InteractiveTableRow(props: InteractiveTableRowProps) {
         }
     };
 
+    const title_component = (
+        <InteractiveTableRowTitle
+            onExpand={handleExpand}
+            expanded={expanded}
+            {...props}
+        />
+    );
+
     const tag_section = <TableRowTagsSection {...props} />;
+
+    const body_component = expanded
+        ? <InteractiveTableRowBody {...props} />
+        : <div />;
 
     return (
         <TableRow
+            expanded={expanded}
             innerRef={ref}
-            className={`rounded-md ${expanded ? "bg-slate-800" : ""}`}
-            onClick={handleClick}
             title_component={title_component}
+            body_component={body_component}
             tag_components={
                 <div>
                     {tag_section}
@@ -68,7 +81,64 @@ export function InteractiveTableRow(props: InteractiveTableRowProps) {
     );
 }
 
-function InteractiveTableRowTitle(props: InteractiveTableRowProps) {
+function InteractiveTableRowBody(props: InteractiveTableRowProps) {
+    const [variations, setVariations] = useState<FileVariation[]>([]);
+
+    useEffect(() => {
+        get_file_variations_for_metadata(props.entry.entry.metadata_id).then(
+            (variations) => {
+                setVariations(variations);
+            },
+        );
+    }, [props.entry.entry.metadata_id]);
+
+    const variations_components = variations.map((variation) => (
+        <InteractiveTableRowVariation
+            key={variation.id}
+            variation={variation}
+            entry={props.entry}
+        />
+    ));
+
+    return (
+        <div className="flex flex-col gap-2 pl-1 pr-1">
+            {variations_components}
+        </div>
+    );
+}
+
+function InteractiveTableRowVariation({ variation, entry }: { variation: FileVariation, entry: EntryViewCursor }) {
+    const [{ opacity }, dragRef] = useDrag(
+        () => ({
+            type: ItemTypes.INTERACTIVE_TABLE_ROW_VARIATION,
+            item: { variation, entry },
+            collect: (monitor) => ({
+                opacity: monitor.isDragging() ? 0.5 : 1,
+            }),
+        }),
+        [],
+    );
+
+    return (
+        <div
+            ref={dragRef}
+            className="flex flex-row gap-2 hover:bg-highlight"
+            style={{ opacity }}
+        >
+            <p className="text-secondary text-sm truncate block">{variation.stem ?? "Custom"}</p>
+            <p className="text-primary text-lg truncate block">
+                { variation.title }
+            </p>
+        </div>
+    );
+}
+
+function InteractiveTableRowTitle(
+    props: InteractiveTableRowProps & {
+        onExpand: (event: React.MouseEvent) => void;
+        expanded: boolean;
+    },
+) {
     const title = props.entry.title();
 
     const [{ opacity }, dragRef] = useDrag(
@@ -82,9 +152,37 @@ function InteractiveTableRowTitle(props: InteractiveTableRowProps) {
         [],
     );
 
+    const handleExtractStems = () => {
+        extract_stems(props.entry.entry.metadata_id).then(() => {
+            console.log("extracted stems");
+        });
+    };
+
     return (
-        <div ref={dragRef} style={{ opacity }}>
+        <div
+            ref={dragRef}
+            className="flex flex-row justify-between hover:bg-highlight"
+            style={{ opacity }}
+        >
             <p className="text-slate-400 text-lg truncate block">{title}</p>
+            <div className="relative flex flex-row justify-end items-center">
+                <DropDownButton
+                    dropDownClassName="-ml-64"
+                    buttonContent={<IconEdit />}
+                    variant="outline"
+                >
+                    <Button onClick={handleExtractStems} variant="outline">
+                        <span className="text-secondary">
+                            Extract stems (Drums, Bass, Vocal, Other)
+                        </span>
+                    </Button>
+                </DropDownButton>
+                <Button variant="outline" onClick={props.onExpand}>
+                    {!props.expanded
+                        ? <IconChevronLeft />
+                        : <IconChevronDown />}
+                </Button>
+            </div>
         </div>
     );
 }

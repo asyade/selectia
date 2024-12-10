@@ -73,7 +73,7 @@ export function TrackView(
     return (
         <div
             ref={trackBarRef}
-            className="w-full h-full relative"
+            className="relative h-full flex-grow"
             onClick={(e) => handleTrackBarClick(e)}
         >
             <div className="absolute top-0 left-0">

@@ -9,7 +9,6 @@ import sys
 import demucs.api
 import torch
 
-
 def version(_payload):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     return {
@@ -23,10 +22,16 @@ def separate(payload):
     
     log(f"Begin separation of {input_file} to {output_dir}")
     
-    separator = demucs.api.Separator()
-    separator = demucs.api.Separator(model="mdx_extra", segment=128)
+    separator = demucs.api.Separator(model="htdemucs", segment=4, overlap=0.1, )
     origin, separated = separator.separate_audio_file(input_file)
-    return { "status": "success" }
+    
+    stems = []
+    for stem, source in separated.items():
+        stem_path = f"{output_dir}/{stem}.wav"
+        demucs.api.save_audio(source, stem_path, samplerate=separator.samplerate)
+        stems.append({ "path": stem_path, "stem": stem })
+    
+    return { "status": "success", "stems": stems }
 
 remote_procedure = {
     "Version": version,

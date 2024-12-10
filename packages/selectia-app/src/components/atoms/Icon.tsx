@@ -1,7 +1,7 @@
 
 import { MdAdd, MdFolder, MdFolderOpen, MdOutlineFolder, MdOutlineFolderOpen } from "react-icons/md";
-import { FaArrowLeft, FaChevronRight, FaPause, FaPlay, FaTasks, FaTrash } from "react-icons/fa";
-import { FaChevronDown, FaChevronUp, FaCircleXmark, FaEye, FaEyeSlash, FaGear, FaMinus, FaPen, FaSquare, FaVolumeLow, FaWindowMaximize, FaXmark } from "react-icons/fa6";
+import { FaTasks } from "react-icons/fa";
+import { FaArrowLeft, FaChevronRight, FaChevronDown, FaChevronUp, FaPause, FaPlay,  FaTrash, FaChevronLeft, FaCircleXmark, FaEye, FaEyeSlash, FaGear, FaMinus, FaPen, FaSquare, FaVolumeLow, FaWindowMaximize, FaXmark } from "react-icons/fa6";
 
 interface IconProps {
     color?: string;
@@ -36,6 +36,10 @@ export function IconChevronUp(props: IconProps) {
 
 export function IconChevronRight(props: IconProps) {
     return <FaChevronRight width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} className={props.className} />;
+}
+
+export function IconChevronLeft(props: IconProps) {
+    return <FaChevronLeft width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} className={props.className} />;
 }
 
 export function IconEdit(props: IconProps) {

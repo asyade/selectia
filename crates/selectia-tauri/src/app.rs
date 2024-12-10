@@ -41,7 +41,7 @@ impl App {
         let state_machine = state_machine(database.clone());
         let file_loader = file_loader(state_machine.clone());
         let demuxer = demuxer::demuxer(settings.demuxer_data_path.clone());
-        let worker = worker(database.clone());
+        let worker = worker(demuxer.clone(), database.clone());
 
         App {
             handle: None,

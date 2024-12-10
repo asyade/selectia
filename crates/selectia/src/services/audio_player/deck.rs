@@ -162,7 +162,7 @@ impl PlayerDeck {
         let snapshot = tokio::task::spawn_blocking(move || {
             info!("Decoding file");
             let mut lock = file.blocking_write();
-            let _ = lock.decode().unwrap();
+            let _ = lock.decode_to_end().unwrap();
             let _ = lock.generate_preview();
             let preview = lock.preview();
             let payload = lock.payload().unwrap();

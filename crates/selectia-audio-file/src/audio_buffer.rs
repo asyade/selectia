@@ -89,12 +89,12 @@ impl<'a> AnySampleBuffer<'a> {
             AudioBufferRef::S16(buf) => self.append_interleaved_typed(buf.as_ref()),
             AudioBufferRef::S32(buf) => self.append_interleaved_typed(buf.as_ref()),
             _ => match src {
-                AudioBufferRef::U8(buf) => panic!("Unsupported sample format: U8"),
-                AudioBufferRef::U16(buf) => panic!("Unsupported sample format: U16"),
-                AudioBufferRef::U24(buf) => panic!("Unsupported sample format: U24"),
-                AudioBufferRef::U32(buf) => panic!("Unsupported sample format: U32"),
-                AudioBufferRef::S8(buf) => panic!("Unsupported sample format: S8"),
-                AudioBufferRef::S24(buf) => panic!("Unsupported sample format: S24"),
+                AudioBufferRef::U8(_buf) => panic!("Unsupported sample format: U8"),
+                AudioBufferRef::U16(_buf) => panic!("Unsupported sample format: U16"),
+                AudioBufferRef::U24(_buf) => panic!("Unsupported sample format: U24"),
+                AudioBufferRef::U32(_buf) => panic!("Unsupported sample format: U32"),
+                AudioBufferRef::S8(_buf) => panic!("Unsupported sample format: S8"),
+                AudioBufferRef::S24(_buf) => panic!("Unsupported sample format: S24"),
                 _ => panic!("Unsupported sample format"),
             },
         }

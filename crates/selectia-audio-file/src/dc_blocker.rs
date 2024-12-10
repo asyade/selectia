@@ -32,17 +32,3 @@ where
         input.iter().map(|&sample| self.process(sample)).collect()
     }
 }
-
-fn main() {
-    // Example: Process a signal with a DC blocker
-    let mut dc_blocker = DcBlocker::new(0.995); // Initialize with alpha = 0.995
-
-    // Example input signal with DC offset
-    let input_signal: Vec<f32> = vec![1.1, 1.2, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8];
-
-    // Process the signal
-    let output_signal = dc_blocker.process_buffer(&input_signal);
-
-    // Print the result
-    println!("Output signal: {:?}", output_signal);
-}

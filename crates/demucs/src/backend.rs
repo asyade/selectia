@@ -76,9 +76,9 @@ impl Backend {
         let port = server.port.to_string();
         let marshalled = server.marshalled.clone();
         let proxy_send = server.proxy_send.clone();
-        let ipc_server_handle = tokio::spawn(async move { server.handle_connection().await });
+        let _ipc_server_handle = tokio::spawn(async move { server.handle_connection().await });
         let to_handler_clone = to_handler.clone();
-        let python_process_handle: JoinHandle<Result<()>> = tokio::spawn(async move {
+        let _python_process_handle: JoinHandle<Result<()>> = tokio::spawn(async move {
             let mut cmd = environment
                 .read()
                 .await
@@ -116,6 +116,34 @@ impl Backend {
         let result = self.remote_call("Version", serde_json::Value::Null).await?;
         Ok(serde_json::from_value(result)?)
     }
+
+    pub async fn demux(&self, input: PathBuf, output: PathBuf) -> Result<DemuxResult> {
+        let payload = DemuxPayload {
+            input_file: input,
+            output_dir: output,
+        };
+        let result = self.remote_call("Separate", serde_json::to_value(payload).unwrap()).await?;
+        let result: DemuxResult = serde_json::from_value(result)?;
+        Ok(result)
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct DemuxPayload {
+    pub input_file: PathBuf,
+    pub output_dir: PathBuf,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct DemuxResult {
+    pub status: String,
+    pub stems: Vec<Stem>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct Stem {
+    pub path: String,
+    pub stem: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -250,5 +278,17 @@ impl RemoteProcessServer {
                 Ok(())
             }
         }
+    }
+}
+
+impl DemuxResult {
+    pub const DRUMS: &str = "drums";
+    pub const BASS: &str = "bass";
+    pub const OTHER: &str = "other";
+    pub const VOCALS: &str = "vocals";
+    pub const GUITAR: &str = "guitar";
+
+    pub fn get_stem(&self, stem: &str) -> Option<&Stem> {
+        self.stems.iter().find(|s| s.stem == stem)
     }
 }

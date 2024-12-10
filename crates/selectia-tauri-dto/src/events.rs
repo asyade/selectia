@@ -6,7 +6,6 @@ pub struct AudioDeckCreatedEvent {
     pub id: u32,
 }
 
-
 #[derive(Serialize, Clone, TS)]
 #[ts(export_to = "events.ts")]
 pub struct AudioDeckFileMetadataUpdatedEvent {

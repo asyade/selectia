@@ -1,9 +1,11 @@
 import {
     create_audio_deck,
+    EntryVariationCursor,
     EntryViewCursor,
     get_audio_decks,
     interactive_list_create_context,
-    load_audio_track,
+    load_audio_track_from_metadata,
+    load_audio_track_from_variation,
 } from "../../selectia-tauri";
 
 import {
@@ -23,18 +25,22 @@ import {
     DropZoneDecorator,
     IconCirclePlus,
     IconXmark,
-    TrackControls,
     Player,
     PlayerProps,
+    TrackControls,
 } from "..";
 import { useDrop } from "react-dnd";
-import { EntryView } from "../../selectia-tauri/dto/models";
-import { useDeckMetadata, useDeckStatus } from "../../selectia-tauri/hooks/UseAudioPlayer";
+import { EntryView, FileVariation } from "../../selectia-tauri/dto/models";
+import {
+    useDeckMetadata,
+    useDeckStatus,
+} from "../../selectia-tauri/hooks/UseAudioPlayer";
 import { useEffect } from "react";
 import { Console } from "../organisms/Console";
 
 export const ItemTypes = {
     INTERACTIVE_TABLE_ROW: "interactive_table_row",
+    INTERACTIVE_TABLE_ROW_VARIATION: "interactive_table_row_variation",
     INTERACTIVE_TABLE_LABEL: "interactive_table_label",
     FILTER_SECTION_LABEL: "filter_section_label",
 };
@@ -79,8 +85,14 @@ export function ManagerPage() {
             );
         },
         "player-deck": (props: IDockviewPanelHeaderProps<PlayerProps>) => {
-            const [metadata] = useDeckMetadata(props.params.deckId, props.params.metadata);
-            const [status, setStatus] = useDeckStatus(props.params.deckId, props.params.status);
+            const [metadata] = useDeckMetadata(
+                props.params.deckId,
+                props.params.metadata,
+            );
+            const [status, setStatus] = useDeckStatus(
+                props.params.deckId,
+                props.params.status,
+            );
 
             return (
                 <DockViewHeader
@@ -122,8 +134,12 @@ export function ManagerPage() {
 
 function TabHeaderActions(props: IDockviewHeaderActionsProps) {
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
-        accept: [ItemTypes.INTERACTIVE_TABLE_ROW],
-        drop: (args: EntryViewCursor, _monitor) => {
+        accept: [
+            ItemTypes.INTERACTIVE_TABLE_ROW,
+            ItemTypes.INTERACTIVE_TABLE_ROW_VARIATION,
+        ],
+        drop: (args, _monitor) => {
+            const itemType = _monitor.getItemType();
             create_audio_deck().then((deck_id) => {
                 props.containerApi.addPanel<PlayerProps>({
                     id: `player-deck-${deck_id}`,
@@ -136,14 +152,31 @@ function TabHeaderActions(props: IDockviewHeaderActionsProps) {
                         payload: null,
                     },
                     position: {
-                        referenceGroup: props.group.id
-                    }
+                        referenceGroup: props.group.id,
+                    },
                 });
                 // Wait 100ms to ensure that the panel got the first status update
                 // Will not be required once progress is implemented as multiple status updates will be sent
                 setTimeout(() => {
-                    load_audio_track(deck_id, args.entry.metadata_id).then(() => {
-                    });
+                    if (itemType === ItemTypes.INTERACTIVE_TABLE_ROW) {
+                        const entry = args as EntryViewCursor;
+                        load_audio_track_from_metadata(
+                            deck_id,
+                            entry.entry.metadata_id,
+                        ).then(
+                            () => {
+                            },
+                        );
+                    } else {
+                        const entry = args as EntryVariationCursor
+                        load_audio_track_from_variation(
+                            deck_id,
+                            entry.variation.id,
+                        ).then(
+                            () => {
+                            },
+                        );
+                    }
                 }, 100);
             });
         },
@@ -156,7 +189,7 @@ function TabHeaderActions(props: IDockviewHeaderActionsProps) {
     const createDeck = (entry?: EntryView) => {
         create_audio_deck().then((deck_id) => {
             if (entry?.metadata_id) {
-                load_audio_track(deck_id, entry.metadata_id);
+                load_audio_track_from_metadata(deck_id, entry.metadata_id);
             }
             props.containerApi.addPanel<PlayerProps>({
                 id: `player-deck-${deck_id}`,
@@ -169,8 +202,8 @@ function TabHeaderActions(props: IDockviewHeaderActionsProps) {
                     payload: null,
                 },
                 position: {
-                    referenceGroup: props.group.id
-                }
+                    referenceGroup: props.group.id,
+                },
             });
         });
     };

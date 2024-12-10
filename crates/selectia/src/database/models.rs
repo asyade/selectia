@@ -22,6 +22,14 @@ pub struct File {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct FileVariation {
+    pub id: i64,
+    pub file_id: i64,
+    pub path: String,
+    pub metadata: Option<String>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct MetadataTag {
     pub metadata_id: i64,
     pub tag_id: i64,
@@ -58,4 +66,17 @@ impl TagName {
     pub const ALBUM_ID: i64 = 6;
     pub const GENRE_ID: i64 = 7;
     pub const PLAYLIST_ID: i64 = 8;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileVariationMetadata {
+    pub title: String,
+    pub stem: Option<String>,
+}
+
+pub struct DecodedFileVariation {
+    pub id: i64,
+    pub file_id: i64,
+    pub path: String,
+    pub metadata: Option<FileVariationMetadata>,
 }

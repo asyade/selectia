@@ -1,11 +1,14 @@
 use std::collections::BTreeMap;
 
-use audio_player::AudioPlayerTask;
+use audio_player::{AudioPlayerTask, TrackTarget};
 use dto::{EntryChangedEvent, EntryListChangedEvent, TagListChangedEvent};
 use interactive_list_context::InteractiveListContext;
 use selectia::database::views::TagView;
 use tauri::Emitter;
-use worker::tasks::TaskStatus;
+use worker::{
+    tasks::{FileAnalysisTask, StemExtractionTask, TaskPayload, TaskStatus},
+    WorkerTask,
+};
 
 use crate::prelude::*;
 
@@ -13,7 +16,7 @@ use crate::prelude::*;
 #[instrument(skip(app))]
 pub async fn interactive_list_create_context<'a>(app: AppArg<'a>) -> AppResult<String> {
     let context: InteractiveListContext = InteractiveListContext::new(app.read().await.clone());
-    let lock = app.write().await.interactive_list_context.clone();
+    let lock = app.read().await.interactive_list_context.clone();
     let id = lock.create_context(context).await;
     info!(
         context_id = id.to_string(),
@@ -29,7 +32,7 @@ pub async fn interactive_list_delete_context<'a>(
     app: AppArg<'a>,
 ) -> AppResult<()> {
     info!(context_id = context_id, "Deleting interactive list context");
-    let lock = app.write().await.interactive_list_context.clone();
+    let lock = app.read().await.interactive_list_context.clone();
     lock.delete_context(ContextId::try_from(context_id)?)
         .await?;
     Ok(())
@@ -83,9 +86,7 @@ pub async fn get_interactive_list_context_entries<'a>(
     filter: EntryViewFilter,
     app: AppArg<'a>,
 ) -> AppResult<Vec<EntryView>> {
-    info!("Getting interactive list context entries");
     let lock = app.read().await.interactive_list_context.clone();
-
     let context = lock.get_context(ContextId::try_from(context_id)?).await?;
     let entries = context.get_entries(filter).await?;
     Ok(entries.into_iter().map(EntryView::from).collect())
@@ -94,7 +95,7 @@ pub async fn get_interactive_list_context_entries<'a>(
 #[tauri::command]
 pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<String> {
     let fut = app
-        .write()
+        .read()
         .await
         .clone()
         .load_directory(PathBuf::from(directory));
@@ -145,7 +146,7 @@ pub async fn get_worker_queue_task<'a>(
 #[tauri::command]
 pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
     let (callback, receiver) = TaskCallback::new();
-    app.write()
+    app.read()
         .await
         .audio_player
         .send(AudioPlayerTask::CreateDeck { callback })
@@ -156,7 +157,7 @@ pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
 #[tauri::command]
 pub async fn get_audio_decks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::DeckView>> {
     let (callback, receiver) = TaskCallback::new();
-    app.write()
+    app.read()
         .await
         .audio_player
         .send(AudioPlayerTask::GetDecks { callback })
@@ -170,23 +171,43 @@ pub async fn get_audio_decks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::DeckView
                 payload: deck.payload.map(|p| p.into()),
                 status: deck.status.into(),
             };
-            dto::DeckView { id, file: Some(file) }
+            dto::DeckView {
+                id,
+                file: Some(file),
+            }
         })
         .collect())
 }
 
 #[tauri::command]
-pub async fn load_audio_track<'a>(
+pub async fn load_audio_track_from_metadata<'a>(
     deck_id: u32,
     metadata_id: i64,
     app: AppArg<'a>,
 ) -> AppResult<()> {
-    app.write()
+    app.read()
         .await
         .audio_player
         .send(AudioPlayerTask::LoadTrack {
             deck_id,
-            metadata_id,
+            target: TrackTarget::Metadata { metadata_id },
+        })
+        .await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn load_audio_track_from_variation<'a>(
+    deck_id: u32,
+    file_variation_id: i64,
+    app: AppArg<'a>,
+) -> AppResult<()> {
+    app.read()
+        .await
+        .audio_player
+        .send(AudioPlayerTask::LoadTrack {
+            deck_id,
+            target: TrackTarget::FileVariation { file_variation_id },
         })
         .await?;
     Ok(())
@@ -199,7 +220,7 @@ pub async fn set_deck_file_status<'a>(
     app: AppArg<'a>,
 ) -> AppResult<()> {
     let (callback, receiver) = TaskCallback::new();
-    app.write()
+    app.read()
         .await
         .audio_player
         .send(AudioPlayerTask::SetDeckFileStus {
@@ -212,3 +233,21 @@ pub async fn set_deck_file_status<'a>(
     Ok(())
 }
 
+
+#[tauri::command]
+pub async fn extract_stems<'a>(metadata_id: i64, app: AppArg<'a>) -> AppResult<()> {
+    let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });
+    app.read()
+        .await
+        .worker
+        .send(WorkerTask::Schedule(task))
+        .await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_file_variations_for_metadata<'a>(metadata_id: i64, app: AppArg<'a>) -> AppResult<Vec<dto::FileVariation>> {
+    let file = app.read().await.database.get_file_from_metadata_id(metadata_id).await?;
+    let variations = app.read().await.database.get_file_variations(file.id).await?;
+    Ok(variations.into_iter().map(dto::FileVariation::from).collect())
+}

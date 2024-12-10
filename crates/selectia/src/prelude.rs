@@ -27,3 +27,5 @@ pub use futures::{Stream, StreamExt, FutureExt, Future};
 pub use crate::models::{Tag, TagName};
 
 pub type Timestamp = DateTime<Utc>;
+
+pub use selectia_audio_file::fundsp;

@@ -27,12 +27,22 @@ pub enum AudioPlayerTask {
     },
     LoadTrack {
         deck_id: u32,
-        metadata_id: i64,
+        target: TrackTarget,
     },
     SetDeckFileStus {
         deck_id: u32,
         status: DeckFileStatus,
         callback: TaskCallback<()>,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub enum TrackTarget {
+    Metadata {
+        metadata_id: i64,
+    },
+    FileVariation {
+        file_variation_id: i64,
     },
 }
 
@@ -191,16 +201,18 @@ impl AudioPlayer {
                 let decks = self.decks.get_all_decks().await?;
                 let _ = callback.resolve(decks).await?;
             }
-            AudioPlayerTask::LoadTrack {
-                deck_id,
-                metadata_id,
-            } => {
-                let file = self.database.get_file_from_metadata_id(metadata_id).await?;
-                
+            AudioPlayerTask::LoadTrack { deck_id, target } => {
+                let file_path = match target {
+                    TrackTarget::Metadata { metadata_id } => {
+                        let file = self.database.get_file_from_metadata_id(metadata_id).await?;
+                        file.path
+                    }
+                    TrackTarget::FileVariation { file_variation_id } => {
+                        self.database.get_file_variation_from_id(file_variation_id).await?.path
+                    }
+                };
                 let deck: PlayerDeck = self.decks.get_deck(deck_id).await?;
-                let (loaded_file, previous) = deck.load_file(file.path).await?;
-        
-
+                let (loaded_file, previous) = deck.load_file(file_path).await?;
                 let backend = self.backend.write().await;
                 let backend = backend.as_ref().ok_or_eyre("Backend not loaded")?;
                 if let Some(previous) = previous {
