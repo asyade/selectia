@@ -7,6 +7,7 @@ use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
 use tauri::{AppHandle, Emitter, State};
+use theater::service::{async_channel_iterator, channel_iterator};
 use tokio::sync::RwLockWriteGuard;
 use worker::{
     tasks::{BackgroundTask, FileAnalysisTask, TaskPayload, TaskStatus},

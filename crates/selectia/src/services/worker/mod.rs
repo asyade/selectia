@@ -3,7 +3,6 @@ use models::Task as TaskModel;
 use tasks::{BackgroundTask, TaskContext, TaskPayload, TaskStatus};
 
 use crate::prelude::*;
-use crate::services::{AddressableService, Task};
 
 pub mod tasks;
 

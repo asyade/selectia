@@ -25,3 +25,4 @@ tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 selectia = { path = "../selectia" }
 selectia-tauri-dto = { path = "../selectia-tauri-dto" }
+theater = { path = "../theater" }

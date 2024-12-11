@@ -29,5 +29,7 @@ symphonia = "0.5.4"
 cpal = "0.15"
 dasp = { version = "0.11.0", features = ["all"] }
 tempdir = "0.3.5"
+
+theater = { path = "../theater" }
 demucs = { path = "../demucs" }
 selectia-audio-file = { path = "../selectia-audio-file" }

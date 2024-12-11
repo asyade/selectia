@@ -143,8 +143,7 @@ pub fn audio_player(database: Database) -> AudioPlayerService {
             .await
             .expect("Failed to create audio player")
             .handle(&mut receiver)
-            .await?;
-        Ok(())
+            .await
     })
 }
 

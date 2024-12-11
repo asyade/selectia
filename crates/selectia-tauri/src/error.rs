@@ -2,10 +2,13 @@ use selectia_tauri_dto::models::AppError as AppErrorDto;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::ipc::{InvokeError, InvokeResponseBody, IpcResponse};
+use theater::error::TheaterError;
 pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
+    #[error(transparent)]
+    Theater(#[from] TheaterError),
     #[error(transparent)]
     Eyre(#[from] eyre::Error),
     #[error("Unhandled error: {0:?}")]
@@ -17,6 +20,7 @@ impl AppError {
         match self {
             AppError::Unhandled(_) => 0,
             AppError::Eyre(_) => 1,
+            AppError::Theater(_) => 2,
         }
     }
 }

@@ -3,7 +3,6 @@ use models::File;
 use state_machine::StateMachineEvent;
 
 use crate::prelude::*;
-use crate::services::{Task, AddressableService, ThreadedService};
 
 pub type Embedding = ThreadedService<StateMachineEvent>;
 

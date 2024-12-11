@@ -1,7 +1,10 @@
+use std::fmt::Debug;
+
 use crate::prelude::*;
 pub use addresable_service::*;
 pub use addresable_service_with_dispatcher::{dispatcher::*, AddressableServiceWithDispatcher};
 pub use threaded_service::*;
+use tokio::task::JoinHandle;
 
 pub type ServiceSender<T> = sync::mpsc::Sender<T>;
 pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;
@@ -9,6 +12,20 @@ pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;
 pub trait Service<T> {
     fn blocking_send(&self, message: T) -> TheaterResult<()>;
     fn send(&self, message: T) -> impl Future<Output = TheaterResult<()>> + Send;
+
+    fn spawn_task<
+        Fut: Future<Output = Result<(), E>> + Send + 'static,
+        E: Send + 'static + Debug,
+    >(
+        &self,
+        task: Fut,
+    ) {
+        let _handle = tokio::task::spawn(async move {
+            if let Err(e) = task.await {
+                error!("task failed: {:?}", e);
+            }
+        });
+    }
 }
 
 pub trait ChannelService<T>: Service<T> {
@@ -69,6 +86,8 @@ impl<T: Send + 'static> TaskCallbackReceiver<T> {
 }
 
 mod addresable_service {
+    use std::fmt::Debug;
+
     use crate::prelude::*;
 
     #[allow(unused_variables)]
@@ -101,19 +120,25 @@ mod addresable_service {
     }
 
     impl<T: Task> AddressableService<T> {
-        pub fn new<Fut, F>(background_task: F) -> Self
+        pub fn new<Fut, F, E>(background_task: F) -> Self
         where
-            Fut: Future<Output = TheaterResult<()>> + Send + 'static,
+            Fut: Future<Output = Result<(), E>> + Send + 'static,
             F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>) -> Fut,
+            E: Debug + Send + 'static,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let _background_handle = tokio::spawn(background_task(receiver, sender.clone()));
-            Self { sender }
+            let instance = Self {
+                sender: sender.clone(),
+            };
+            instance.spawn_task(background_task(receiver, sender.clone()));
+            instance
         }
     }
 }
 
 mod addresable_service_with_dispatcher {
+    use std::{error::Error, marker::PhantomData};
+
     use super::{addresable_service::AddressableService, Event};
     use crate::prelude::*;
     use dispatcher::EventDispatcher;
@@ -125,22 +150,20 @@ mod addresable_service_with_dispatcher {
     }
 
     impl<T: Task, R: Event> AddressableServiceWithDispatcher<T, R> {
-        pub fn new<Fut, F>(background_task: F) -> Self
+        pub fn new<Fut, F, E: std::fmt::Debug + Send + 'static>(background_task: F) -> Self
         where
-            Fut: Future<Output = TheaterResult<()>> + Send + 'static,
+            Fut: Future<Output = Result<(), E>> + Send + 'static,
             F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>, EventDispatcher<R>) -> Fut,
         {
             let dispatcher = EventDispatcher::new();
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let _background_handle = tokio::spawn(background_task(
-                receiver,
-                sender.clone(),
-                dispatcher.clone(),
-            ));
-            Self {
+            let background_task = background_task(receiver, sender.clone(), dispatcher.clone());
+            let instance = Self {
                 dispatcher,
                 service: AddressableService { sender },
-            }
+            };
+            instance.spawn_task(background_task);
+            instance
         }
 
         pub async fn register_channel(&self, listener: sync::mpsc::Sender<R>) {
@@ -226,6 +249,8 @@ mod addresable_service_with_dispatcher {
 }
 
 mod threaded_service {
+    use std::fmt::Debug;
+
     use crate::prelude::*;
 
     #[derive(Clone)]
@@ -234,12 +259,17 @@ mod threaded_service {
     }
 
     impl<T: Task> ThreadedService<T> {
-        pub fn new<F>(background_task: F) -> Self
+        pub fn new<F, E>(background_task: F) -> Self
         where
-            F: FnOnce(sync::mpsc::Receiver<T>) -> TheaterResult<()> + Send + 'static,
+            F: FnOnce(sync::mpsc::Receiver<T>) -> Result<(), E> + Send + 'static,
+            E: Debug + Send + 'static,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let _background_handle = std::thread::spawn(move || background_task(receiver));
+            let _background_handle = std::thread::spawn(move || {
+                if let Err(e) = background_task(receiver) {
+                    error!("background task failed: {:?}", e);
+                }
+            });
             Self { sender }
         }
     }

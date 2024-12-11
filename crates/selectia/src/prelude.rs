@@ -16,8 +16,9 @@ pub (crate) use tracing::*;
 pub (crate) use std::sync::atomic::{AtomicBool, AtomicUsize};
 pub (crate) use serde::{Serialize, Deserialize};
 
-pub use crate::services::*;
+pub use theater::prelude::*;
 pub use crate::ext::*;
+pub use crate::services::*;
 pub use crate::tasks::load_directory::LoadDirectory;
 pub use crate::services::file_loader::{file_loader, FileLoader, FileLoaderTask};
 pub use crate::services::state_machine::{state_machine, StateMachine, StateMachineTask, IngestFileTask};
