@@ -118,7 +118,6 @@ impl Backend {
                     let file = deck.file.blocking_read();
                     if let Some(file) = file.as_ref() {
                         if file
-                            .state
                             .updated
                             .fetch_update(
                                 std::sync::atomic::Ordering::SeqCst,
@@ -130,7 +129,7 @@ impl Backend {
                             if let Err(e) = dispatcher.dispatch_blocking(
                                 AudioPlayerEvent::DeckFileStatusUpdated {
                                     id: *id,
-                                    status: file.state.status.blocking_read().clone(),
+                                    status: file.status.blocking_read().clone(),
                                 },
                             ) {
                                 error!("Failed to dispatch deck file updated event: {e}");

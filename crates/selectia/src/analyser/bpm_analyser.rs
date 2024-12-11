@@ -1,11 +1,11 @@
 //! The BPM analyser provide a way to detect the BPM of an audio file based one the onesets provided for the audio file.
-//! The BPM analyser by himslef does is not able to find the onesets events but instead normalize the onesets events to a BPM value with a certain confidence as well as a well placed BPM grid
+//! It is not able to find the onesets events but instead normalize the onesets events to a BPM value with a certain confidence as well as a well placed BPM grid
 
 use crate::prelude::*;
 use std::collections::BTreeMap;
 
 use fundsp::Num;
-use selectia_audio_file::{audio_file::AudioBeatOneset, AudioFile};
+use selectia_audio_file::audio_file::AudioBeatOneset;
 
 pub struct BpmAnalyserOptions {
     pub range: (f32, f32),
@@ -42,21 +42,20 @@ impl BpmAnalyser {
         Self { options, onesets }
     }
 
-    pub fn get_result(&self) -> Result<BpmAnalyserResult>  {
+    pub fn get_result(&self) -> Result<BpmAnalyserResult> {
         let regions = self.grouped_onesets()?;
         let mut regions = regions
             .into_iter()
             .filter(|region| {
-                region.average_bpm >= self.options.range.0 && region.average_bpm <= self.options.range.1
+                region.average_bpm >= self.options.range.0
+                    && region.average_bpm <= self.options.range.1
             })
             .collect::<Vec<_>>();
         regions.sort_by(|a, b| a.total_beat_count.cmp(&b.total_beat_count));
 
         let prefered_region = regions.pop();
 
-        let average_bpm = prefered_region.as_ref().map(|region| {
-            region.plot()
-        });
+        let average_bpm = prefered_region.as_ref().map(|region| region.plot());
 
         let alternative_bpm = regions
             .into_iter()
@@ -122,9 +121,11 @@ impl OnesetGroup {
         assert!(self.onesets.len() > 0);
 
         if self.onesets.len() == 1 {
-            return BpmPlot { bpm: self.onesets[0].bpm, offset: self.onesets[0].offset };
+            return BpmPlot {
+                bpm: self.onesets[0].bpm,
+                offset: self.onesets[0].offset,
+            };
         }
-
 
         let mut max_bpm = f32::MIN;
         let mut min_bpm = f32::MAX;
@@ -153,10 +154,11 @@ impl OnesetGroup {
 
         let mut max_missalignement = 0;
 
-
         for oneset in self.onesets.iter() {
-            let relative_missalignement = (oneset.offset as i64 - base_offset as i64) % base_duration as i64;
-            max_missalignement = std::cmp::Ord::max(max_missalignement, relative_missalignement).abs();
+            let relative_missalignement =
+                (oneset.offset as i64 - base_offset as i64) % base_duration as i64;
+            max_missalignement =
+                std::cmp::Ord::max(max_missalignement, relative_missalignement).abs();
         }
 
         max_missalignement

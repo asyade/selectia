@@ -220,12 +220,29 @@ pub async fn set_deck_file_status<'a>(
     app: AppArg<'a>,
 ) -> AppResult<()> {
     let (callback, receiver) = TaskCallback::new();
+    let paused = match status {
+        dto::DeckFileStatus::Paused { .. } => true,
+        dto::DeckFileStatus::Playing { .. } => false,
+        _ => {
+            error!("Invalid deck file status");
+            return Err(eyre::eyre!("Invalid deck file status").into())
+        }
+    };
+    let offset = match status {
+        dto::DeckFileStatus::Paused { offset, .. } => offset,
+        dto::DeckFileStatus::Playing { offset, .. } => offset,
+        _ => {
+            error!("Invalid deck file status");
+            return Err(eyre::eyre!("Invalid deck file status").into())
+        }
+    };
     app.read()
         .await
         .audio_player
-        .send(AudioPlayerTask::SetDeckFileStus {
+        .send(AudioPlayerTask::SetDeckFileStatus {
             deck_id,
-            status: status.into(),
+            paused,
+            offset,
             callback,
         })
         .await?;

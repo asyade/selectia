@@ -194,22 +194,13 @@ impl From<selectia::database::views::entry_view::MetadataTagView> for MetadataTa
 impl From<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
     fn from(status: selectia::services::audio_player::DeckFileStatus) -> Self {
         match status {
-            selectia::services::audio_player::DeckFileStatus::Loading { progress } => DeckFileStatus::Loading { progress },
-            selectia::services::audio_player::DeckFileStatus::Playing { offset } => DeckFileStatus::Playing { offset },
-            selectia::services::audio_player::DeckFileStatus::Paused { offset } => DeckFileStatus::Paused { offset },
+            selectia::services::audio_player::DeckFileStatus::Loading { progress, .. } => DeckFileStatus::Loading { progress },
+            selectia::services::audio_player::DeckFileStatus::Playing { offset, .. } => DeckFileStatus::Playing { offset: offset.load(std::sync::atomic::Ordering::Relaxed) },
+            selectia::services::audio_player::DeckFileStatus::Paused { offset, .. } => DeckFileStatus::Paused { offset: offset.load(std::sync::atomic::Ordering::Relaxed) },
         }
     }
 }
 
-impl Into<selectia::services::audio_player::DeckFileStatus> for DeckFileStatus {
-    fn into(self) -> selectia::services::audio_player::DeckFileStatus {
-        match self {
-            DeckFileStatus::Loading { progress } => selectia::services::audio_player::DeckFileStatus::Loading { progress },
-            DeckFileStatus::Playing { offset } => selectia::services::audio_player::DeckFileStatus::Playing { offset },
-            DeckFileStatus::Paused { offset } => selectia::services::audio_player::DeckFileStatus::Paused { offset },
-        }
-    }
-}
 
 impl From<selectia::services::audio_player::DeckFilePayloadSnapshot> for DeckFilePayloadSnapshot {
     fn from(payload: selectia::services::audio_player::DeckFilePayloadSnapshot) -> Self {

@@ -11,7 +11,7 @@ use demuxer::{Demuxer, DemuxerTask};
 use eyre::{bail, OptionExt};
 use models::{FileVariationMetadata, Task};
 use selectia_audio_file::{
-    audio_file::{AudioFilePayload, EncodedAudioFile}, error::{AudioFileError, AudioFileResult}, AudioFile
+    audio_file::{AudioFilePayload, EncodedAudioFile}, error::{AudioFileError, AudioFileResult}
 };
 
 #[derive(Clone, Debug)]
@@ -142,7 +142,7 @@ impl FileAnalysisTask {
 
         let bpm_analysis_result = tokio::task::spawn_blocking(move || {
             let wave = EncodedAudioFile::from_file(drum_file_path)
-                .and_then(|f| f.read_mono_wave_until(|w| Ok(true)))?;
+                .and_then(|f| f.read_mono_wave_until(|_w| Ok(true)))?;
             let mut wave = wave.filter(
                 wave.duration(),
                 &mut (highpass_hz(38.0, 0.7) >> lowpass_hz(1000.0, 0.7)),
@@ -150,7 +150,7 @@ impl FileAnalysisTask {
             wave.normalize();
             let payload = AudioFilePayload::from_wave(wave)?;
             let payload = payload.resample(44100.0)?;
-            let onesets = payload.detect_onesets(512 as usize)?;
+            let onesets = payload.detect_onesets(512, 128)?;
             let bpm_analyser = BpmAnalyser::new(BpmAnalyserOptions { range: (80.0, 280.0) }, onesets).get_result().unwrap();
             info!(bpm_analyser=?bpm_analyser, "BPM analysis completed");
             AudioFileResult::Ok(bpm_analyser)

@@ -12,6 +12,7 @@ use dasp::sample;
 pub use deck::*;
 use eyre::OptionExt;
 use futures::executor::block_on;
+use symphonia::core::meta;
 mod backend;
 mod deck;
 
@@ -29,21 +30,18 @@ pub enum AudioPlayerTask {
         deck_id: u32,
         target: TrackTarget,
     },
-    SetDeckFileStus {
+    SetDeckFileStatus {
         deck_id: u32,
-        status: DeckFileStatus,
-        callback: TaskCallback<()>,
+        paused: bool,
+        offset: u32,
+        callback: TaskCallback<bool>,
     },
 }
 
 #[derive(Clone, Debug)]
 pub enum TrackTarget {
-    Metadata {
-        metadata_id: i64,
-    },
-    FileVariation {
-        file_variation_id: i64,
-    },
+    Metadata { metadata_id: i64 },
+    FileVariation { file_variation_id: i64 },
 }
 
 #[derive(Clone, Debug)]
@@ -99,32 +97,27 @@ impl<T> BufferedSamplesSource<T> {
         self.buffer.resize(buffer_size, T::from_sample(0.0));
         match &mut self.provider {
             SamplesSource::File(file) => {
-                let file_lock = file.file.blocking_read();
-                let payload = file_lock.payload();
-
-                if let Some(payload) = payload {
-                    let mut status = file.state.status.blocking_write();
-                    match &mut *status {
-                        DeckFileStatus::Playing { offset } => {
-                            for (i, sample) in self.buffer.iter_mut().enumerate() {
-                                *sample = T::from_sample(
-                                    payload.buffer.buffer[((*offset + i as u32)
-                                        % payload.buffer.buffer.len() as u32)
-                                        as usize],
-                                );
-                            }
-                            *offset =
-                                (*offset + self.buffer.len() as u32) % payload.buffer.buffer.len() as u32;
-                            file.state
-                                .updated
-                                .store(true, std::sync::atomic::Ordering::Relaxed);
+                let status = file.status.blocking_read();
+                match &*status {
+                    DeckFileStatus::Playing { offset, payload } => {
+                        let payload = payload.payload.blocking_read();
+                        let _offset = offset.load(std::sync::atomic::Ordering::Relaxed);
+                        for (i, sample) in self.buffer.iter_mut().enumerate() {
+                            *sample = T::from_sample(
+                                payload.buffer.buffer[((_offset + i as u32)
+                                    % payload.buffer.buffer.len() as u32)
+                                    as usize],
+                            );
                         }
-                        _ => {
-                            self.buffer.fill(T::from_sample(0.0));
-                        }
+                        let updated_offset = (_offset + self.buffer.len() as u32)
+                            % payload.buffer.buffer.len() as u32;
+                        offset.store(updated_offset, std::sync::atomic::Ordering::Relaxed);
+                        file.updated
+                            .store(true, std::sync::atomic::Ordering::Relaxed);
                     }
-                } else {
-                    self.buffer.fill(T::from_sample(0.0));
+                    _ => {
+                        self.buffer.fill(T::from_sample(0.0));
+                    }
                 }
             }
         }
@@ -207,7 +200,10 @@ impl AudioPlayer {
                         file.path
                     }
                     TrackTarget::FileVariation { file_variation_id } => {
-                        self.database.get_file_variation_from_id(file_variation_id).await?.path
+                        self.database
+                            .get_file_variation_from_id(file_variation_id)
+                            .await?
+                            .path
                     }
                 };
                 let deck: PlayerDeck = self.decks.get_deck(deck_id).await?;
@@ -215,17 +211,43 @@ impl AudioPlayer {
                 let backend = self.backend.write().await;
                 let backend = backend.as_ref().ok_or_eyre("Backend not loaded")?;
                 if let Some(previous) = previous {
-                    backend.send(BackendMessage::DeleteSource(SamplesSource::File(previous))).await?;
+                    backend
+                        .send(BackendMessage::DeleteSource(SamplesSource::File(previous)))
+                        .await?;
                 }
-                backend.send(BackendMessage::CreateSource(SamplesSource::File(loaded_file))).await?;
+                backend
+                    .send(BackendMessage::CreateSource(SamplesSource::File(
+                        loaded_file,
+                    )))
+                    .await?;
             }
-            AudioPlayerTask::SetDeckFileStus {
+            AudioPlayerTask::SetDeckFileStatus {
                 deck_id,
-                status,
+                paused,
+                offset,
                 callback,
             } => {
-                self.decks.set_deck_file_status(deck_id, status).await?;
-                let _ = callback.resolve(()).await?;
+                let result = self.decks.update_deck_file_status(deck_id, |status| {
+                    let current_payload = status.payload();
+                    let current_offset = status.offset();
+                    match (paused, current_offset, current_payload) {
+                        (true, Some(current_offset), Some(current_payload)) => {
+                            current_offset.store(offset, std::sync::atomic::Ordering::Relaxed);
+                            *status = DeckFileStatus::Paused { offset: current_offset.clone(), payload: current_payload.clone() };
+                            true
+                        }
+                        (false, Some(current_offset), Some(current_payload)) => {
+                            current_offset.store(offset, std::sync::atomic::Ordering::Relaxed);
+                            *status = DeckFileStatus::Playing { offset: current_offset.clone(), payload: current_payload.clone() };
+                            true
+                        }
+                        _ => {
+                            error!("Invalid deck file status (cant update status from loading to paused or playing)");
+                            false
+                        }
+                    }
+                }).await?;
+                let _ = callback.resolve(result).await?;
             }
         }
         Ok(())
@@ -260,6 +282,12 @@ impl DeckMixer {
             .ok_or(eyre!("Deck not found"))
     }
 
+
+    async fn update_deck_file_status<F: FnOnce(&mut DeckFileStatus) -> R, R>(&self, deck_id: u32, f: F) -> Result<R> {
+        let deck = self.get_deck(deck_id).await?;
+        deck.update_status(f).await
+    }
+
     async fn set_deck_file_status(&self, deck_id: u32, status: DeckFileStatus) -> Result<()> {
         let deck = self.get_deck(deck_id).await?;
         deck.set_status(status).await?;
@@ -271,25 +299,22 @@ impl DeckMixer {
         let mut result = BTreeMap::new();
         for (id, deck) in decks.iter() {
             let lock: sync::RwLockReadGuard<'_, Option<DeckFile>> = deck.file.read().await;
-            let payload = match lock.as_ref() {
+            let (metadata, payload) = match lock.as_ref() {
                 Some(lock) => {
                     let metadata = lock.metadata.clone();
-                    let lock = lock.file.read().await;
-                    let preview = lock.preview();
-                    let payload = lock.payload().unwrap();
-                    Some((metadata, DeckFilePayloadSnapshot::new(payload, preview)))
+                    let lock = lock.status.read().await;
+                    match &*lock {
+                        DeckFileStatus::Playing { payload, .. }
+                        | DeckFileStatus::Paused { payload, .. } => (Some(metadata), Some(DeckFilePayloadSnapshot::new(payload).await)),
+                        _ => (Some(metadata), None)
+                    }
                 }
-                None => None,
+                None => (None, None),
             };
 
-            let (metadata, payload) = payload
-                .map(|(metadata, payload)| (Some(metadata), Some(payload)))
-                .unwrap_or((None, None));
-
             let status = {
-                let lock = deck.file.read().await;
                 if let Some(lock) = lock.as_ref() {
-                    Some(lock.state.status.read().await.clone())
+                    Some(lock.status.read().await.clone())
                 } else {
                     None
                 }
