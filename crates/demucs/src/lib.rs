@@ -1,3 +1,12 @@
+//! This crate is a wrapper around the demucs library (https://github.com/facebookresearch/demucs)
+//! It provides a way to install the demucs library and use it to demux audio files.
+//! 
+//! ** WIP **
+//! In his current state the crate is not ready for production use.
+//! Actually the crate does not implement inference of the model, it simply install a full python environment and run a python script in a subprocess.
+//! This approach work fine but is terribly ineficient.
+//! In the future the crate may fully implement the demucs model.
+
 #![allow(unused_imports)]
 
 use backend::{Backend, DemuxResult, FromBackendRequest, ToProcessRequest};

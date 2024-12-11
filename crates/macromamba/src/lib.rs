@@ -1,5 +1,13 @@
+//! This crate provide an interface around micromamba (https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html)
+//! It also provide helper function to download and install the micromamba binary.
+//! 
+//! # ** WIP **
+//! In his current state the crate is not ready for production use.
+//! It is a work in progress and may change significantly.
+//! 
+//! # Compatibility
+//! - The crate is actively tested on windows 10 and 11. but will be ported soon to linux and probably macos.
 #![allow(unused_imports)]
-
 use eyre::Result;
 use futures::StreamExt;
 use std::hash::Hash;

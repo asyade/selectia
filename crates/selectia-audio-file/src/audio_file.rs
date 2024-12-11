@@ -553,21 +553,6 @@ impl AudioFilePayload {
     }
 }
 
-/// Highpass filter with cutoff frequency `f` Hz with Q value `q`.
-/// - Input 0: audio
-/// - Output 0: filtered audio
-pub fn dc_blocker<F: Real>(f: F, q: F) -> An<FixedSvf<F, HighpassMode<F>>> {
-    An(FixedSvf::new(
-        HighpassMode::default(),
-        &SvfParams {
-            sample_rate: convert(DEFAULT_SR),
-            cutoff: f,
-            q,
-            gain: F::one(),
-        },
-    ))
-}
-
 #[derive(Clone, Debug)]
 pub struct AudioBeatOneset {
     pub offset: usize,
