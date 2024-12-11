@@ -1,10 +1,11 @@
 use crate::{prelude::*, App};
-use selectia::analyser::entries_analyser::EntriesAnalyser;
+use selectia::{analyser::entries_analyser::EntriesAnalyser, database};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct InteractiveListContext {
     pub app: App,
+    database: Database,
     cache: Arc<RwLock<Cache>>,
 }
 
@@ -53,7 +54,7 @@ impl Context for InteractiveListContext {}
 
 impl InteractiveListContext {
     pub async fn get_entries(&self, filter: EntryViewFilter) -> eyre::Result<Vec<EntryView>> {
-        let entries = self.app.get_entries(&filter).await?;
+        let entries = self.database.get_entries(&filter).await?;
         let mut lock = self.cache.write().await;
         lock.set(entries.clone(), filter);
         Ok(entries)
@@ -74,7 +75,7 @@ impl InteractiveListContext {
 
         {
             let mut lock = self.cache.write().await;
-            lock.fill(&self.app.database).await?;
+            lock.fill(&self.database).await?;
         }
 
         info!(tag_name_id, input, "Getting tag creation suggestions (uncached)");
@@ -90,27 +91,27 @@ impl InteractiveListContext {
         value: String,
     ) -> eyre::Result<EntryView> {
         info!(metadata_id, name_id, value, "Creating tag");
-        self.app
-            .database
+        self.database
             .set_metadata_tag_by_tag_name_id(metadata_id, name_id, value)
             .await?;
         let entry = self
-            .app
             .database
             .get_entry_by_metadata_id(metadata_id)
             .await?;
         {
             let mut lock = self.cache.write().await;
-            lock.invalidate(&self.app.database);
+            lock.invalidate(&self.database);
         }
         Ok(entry.into())
     }
 }
 
 impl InteractiveListContext {
-    pub fn new(app: App) -> Self {
+    pub async fn new(app: App) -> Self {
+        let database = app.context.get_service::<Database>().await.expect("Database service");
         Self {
             app,
+            database,
             cache: Arc::new(RwLock::new(Cache::new())),
         }
     }

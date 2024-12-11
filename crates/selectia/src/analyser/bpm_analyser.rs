@@ -1,6 +1,6 @@
 //! The BPM analyser provide a way to detect the BPM of an audio file based one the onesets provided for the audio file.
 //! It is not able to find the onesets events but instead normalize the onesets events to a BPM value with a certain confidence as well as a well placed BPM grid
-
+#![allow(dead_code)]
 use crate::prelude::*;
 use std::collections::BTreeMap;
 
@@ -149,8 +149,6 @@ impl OnesetGroup {
         let bpm_diff_ratio = bpm_diff / bpm;
         let bpm_diff_duration = bpm_diff_ratio * base_duration as f32;
         let base_duration = f32::ceil(base_duration as f32 - bpm_diff_duration) as usize;
-
-        let base_missalignement = base_offset % base_duration;
 
         let mut max_missalignement = 0;
 

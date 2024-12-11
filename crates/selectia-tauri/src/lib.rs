@@ -23,3 +23,4 @@ pub mod prelude;
 
 mod settings;
 mod context;
+mod ext;

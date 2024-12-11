@@ -2,7 +2,7 @@ use demuxer::Demuxer;
 use models::Task as TaskModel;
 use tasks::{BackgroundTask, TaskContext, TaskPayload, TaskStatus};
 
-use crate::prelude::*;
+use crate::{database, prelude::*};
 
 pub mod tasks;
 
@@ -30,10 +30,12 @@ pub enum WorkerEvent {
 
 pub type Worker = AddressableServiceWithDispatcher<WorkerTask, WorkerEvent>;
 
-pub fn worker(demuxer: Demuxer, database: Database) -> Worker {
-    AddressableServiceWithDispatcher::new(move |receiver, sender, dispatcher| {
-        worker_task(demuxer, database, receiver, sender, dispatcher)
-    })
+pub async fn worker(ctx: TheaterContext) -> Worker {
+    AddressableServiceWithDispatcher::new(ctx, |ctx, receiver, sender, dispatcher| async move {
+        let database = ctx.get_service::<Database>().await?;
+        let demuxer = ctx.get_service::<Demuxer>().await?;
+        worker_task(demuxer, database, receiver, sender, dispatcher).await
+    }).await
 }
 
 async fn worker_task(

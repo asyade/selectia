@@ -50,10 +50,10 @@ impl PartialEq for DemuxerStatus {
     }
 }
 
-pub fn demuxer(data_path: PathBuf) -> Demuxer {
-    AddressableServiceWithDispatcher::new(move |receiver, sender, dispatcher| {
+pub async fn demuxer(ctx: TheaterContext, data_path: PathBuf) -> Demuxer {
+    AddressableServiceWithDispatcher::new(ctx, move |ctx, receiver, sender, dispatcher| {
         demuxer_task(data_path.clone(), receiver, sender, dispatcher)
-    })
+    }).await
 }
 
 async fn demuxer_task(

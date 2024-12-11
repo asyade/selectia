@@ -61,10 +61,11 @@ pub struct IngestFileTask {
     pub hash: String,
 }
 
-pub fn state_machine(database: Database) -> StateMachine {
-    AddressableServiceWithDispatcher::new(move |receiver, _sender, dispatcher| {
-        state_machine_task(database, receiver, dispatcher)
-    })
+pub async fn state_machine(ctx: TheaterContext) -> StateMachine {
+    AddressableServiceWithDispatcher::new(ctx, move |ctx, receiver, _sender, dispatcher| async move{
+        let database = ctx.get_service::<Database>().await?;
+        state_machine_task(database, receiver, dispatcher).await
+    }).await
 }
 
 async fn state_machine_task(

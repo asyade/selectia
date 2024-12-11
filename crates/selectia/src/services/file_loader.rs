@@ -9,20 +9,34 @@ pub enum FileLoaderTask {
 
 pub type FileLoader = AddressableService<FileLoaderTask>;
 
-pub fn file_loader(state_machine: StateMachine) -> FileLoader {
-    AddressableService::new(move |receiver, _| file_loader_task(state_machine, receiver))
+pub async fn file_loader(ctx: TheaterContext) -> FileLoader {
+    AddressableService::new(ctx, |ctx, receiver, _| async move {
+        let state_machine = ctx.get_service::<StateMachine>().await?;
+        file_loader_task(state_machine, receiver).await
+    })
+    .await
 }
 
-async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Receiver<FileLoaderTask>) -> Result<()> {
+async fn file_loader_task(
+    state_machine: StateMachine,
+    receiver: sync::mpsc::Receiver<FileLoaderTask>,
+) -> Result<()> {
     let stream = futures::stream::unfold(receiver, |mut recv| async move {
         recv.recv().await.map(|task| (task, recv))
-    }).map(|file| async {
+    })
+    .map(|file| async {
         match file {
             FileLoaderTask::LoadFile(path) => {
                 trace!(path = ?path, "Loading file ...");
                 match loader::LoadedFile::new(path).await {
                     Ok(loaded_file) => {
-                        if let Err(e) = state_machine.send(StateMachineTask::ingest_file(loaded_file.path, loaded_file.hash)).await {
+                        if let Err(e) = state_machine
+                            .send(StateMachineTask::ingest_file(
+                                loaded_file.path,
+                                loaded_file.hash,
+                            ))
+                            .await
+                        {
                             error!(error = ?e, "Error sending file to state machine");
                         }
                     }
@@ -33,7 +47,8 @@ async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Rec
                 true
             }
         }
-    }).buffer_unordered(MAX_CONCURRENT_LOADS);
+    })
+    .buffer_unordered(MAX_CONCURRENT_LOADS);
 
     let mut stream = Box::pin(stream);
     while let Some(should_continue) = stream.as_mut().next().await {
@@ -44,12 +59,11 @@ async fn file_loader_task(state_machine: StateMachine, receiver: sync::mpsc::Rec
     Ok(())
 }
 
-impl Task for FileLoaderTask {
-}
+impl Task for FileLoaderTask {}
 
 mod loader {
-    use sha2::{Digest, Sha256};
     use base64ct::{Base64, Encoding};
+    use sha2::{Digest, Sha256};
     use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
     use crate::prelude::*;
@@ -73,15 +87,15 @@ mod loader {
             let mut hasher = Sha256::new();
 
             hasher.update(&size.to_be_bytes());
-        
+
             if size >= BLOCK_SIZE {
                 input_buffer.resize(BLOCK_SIZE as usize, 0);
                 file.read_exact(&mut input_buffer).await?;
                 hasher.update(&input_buffer);
 
-                
                 if size >= 2 * BLOCK_SIZE {
-                    file.seek(std::io::SeekFrom::End(-(BLOCK_SIZE as i64))).await?;
+                    file.seek(std::io::SeekFrom::End(-(BLOCK_SIZE as i64)))
+                        .await?;
                     file.read_exact(&mut input_buffer).await?;
                     hasher.update(&input_buffer);
                 }
@@ -92,21 +106,16 @@ mod loader {
                     file.read_exact(&mut input_buffer).await?;
                     hasher.update(&input_buffer);
                 }
-
             } else {
                 input_buffer.resize(size as usize, 0);
                 file.read_exact(&mut input_buffer).await?;
                 hasher.update(&input_buffer);
             }
-            
 
             let hash = hasher.finalize();
             let hash = Base64::encode_string(&hash);
             trace!(path = ?path, hash, "File hash computed");
-            Ok(Self {
-                path,
-                hash,
-            })
+            Ok(Self { path, hash })
         }
     }
 }

@@ -16,3 +16,4 @@ pub(crate) use crate::dto::prelude as dto;
 
 pub use crate::app::{App, AppArg, AppState};
 pub use crate::error::AppResult;
+pub use crate::ext::*;

@@ -18,9 +18,11 @@ pub trait Service<T> {
         E: Send + 'static + Debug,
     >(
         &self,
+        ctx: TheaterContext,
         task: Fut,
     ) {
         let _handle = tokio::task::spawn(async move {
+            ctx.is_ready().await;
             if let Err(e) = task.await {
                 error!("task failed: {:?}", e);
             }
@@ -32,7 +34,7 @@ pub trait ChannelService<T>: Service<T> {
     fn sender(&self) -> &sync::mpsc::Sender<T>;
 }
 
-pub trait Task: Sized + Send + 'static {}
+pub trait Task: Sized + Send + Clone + 'static {}
 
 pub trait Event: Task + Clone + 'static {}
 
@@ -120,17 +122,19 @@ mod addresable_service {
     }
 
     impl<T: Task> AddressableService<T> {
-        pub fn new<Fut, F, E>(background_task: F) -> Self
+        pub async fn new<Fut, F, E>(ctx: TheaterContext, background_task: F) -> Self
         where
             Fut: Future<Output = Result<(), E>> + Send + 'static,
-            F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>) -> Fut,
+            F: FnOnce(TheaterContext, sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>) -> Fut,
             E: Debug + Send + 'static,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
             let instance = Self {
                 sender: sender.clone(),
             };
-            instance.spawn_task(background_task(receiver, sender.clone()));
+            ctx.register_service(instance.clone()).await;
+            let background_task = background_task(ctx.clone(), receiver, sender.clone());
+            instance.spawn_task(ctx, background_task);
             instance
         }
     }
@@ -150,19 +154,29 @@ mod addresable_service_with_dispatcher {
     }
 
     impl<T: Task, R: Event> AddressableServiceWithDispatcher<T, R> {
-        pub fn new<Fut, F, E: std::fmt::Debug + Send + 'static>(background_task: F) -> Self
+        pub async fn new<Fut, F, E: std::fmt::Debug + Send + 'static>(
+            ctx: TheaterContext,
+            background_task: F,
+        ) -> Self
         where
             Fut: Future<Output = Result<(), E>> + Send + 'static,
-            F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>, EventDispatcher<R>) -> Fut,
+            F: FnOnce(
+                TheaterContext,
+                sync::mpsc::Receiver<T>,
+                sync::mpsc::Sender<T>,
+                EventDispatcher<R>,
+            ) -> Fut,
         {
             let dispatcher = EventDispatcher::new();
             let (sender, receiver) = sync::mpsc::channel(4096);
-            let background_task = background_task(receiver, sender.clone(), dispatcher.clone());
+            let background_task =
+                background_task(ctx.clone(), receiver, sender.clone(), dispatcher.clone());
             let instance = Self {
                 dispatcher,
                 service: AddressableService { sender },
             };
-            instance.spawn_task(background_task);
+            ctx.register_service(instance.clone()).await;
+            instance.spawn_task(ctx, background_task);
             instance
         }
 

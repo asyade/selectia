@@ -10,3 +10,5 @@ pub use crate::service::{
     AddressableService, AddressableServiceWithDispatcher, ChannelService, Event, EventDispatcher,
     Service, Task, TaskCallback, TaskCallbackReceiver, ThreadedService, ServiceReceiver, ServiceSender
 };
+
+pub use crate::context::TheaterContext;

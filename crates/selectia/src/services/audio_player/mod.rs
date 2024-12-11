@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     ops::{Deref, DerefMut},
     sync::atomic::AtomicU32,
+    task::Context,
 };
 
 use crate::prelude::*;
@@ -130,14 +131,19 @@ pub enum SamplesSource {
     File(DeckFile),
 }
 
-pub fn audio_player(database: Database) -> AudioPlayerService {
-    AddressableServiceWithDispatcher::new(move |mut receiver, _sender, dispatcher| async move {
-        AudioPlayer::new(database, dispatcher)
-            .await
-            .expect("Failed to create audio player")
-            .handle(&mut receiver)
-            .await
-    })
+pub async fn audio_player(ctx: TheaterContext) -> AudioPlayerService {
+    AddressableServiceWithDispatcher::new(
+        ctx,
+        move |ctx, mut receiver, _sender, dispatcher| async move {
+            let database = ctx.get_service::<Database>().await?;
+            AudioPlayer::new(database, dispatcher)
+                .await
+                .expect("Failed to create audio player")
+                .handle(&mut receiver)
+                .await
+        },
+    )
+    .await
 }
 
 impl AudioPlayer {
@@ -282,8 +288,11 @@ impl DeckMixer {
             .ok_or(eyre!("Deck not found"))
     }
 
-
-    async fn update_deck_file_status<F: FnOnce(&mut DeckFileStatus) -> R, R>(&self, deck_id: u32, f: F) -> Result<R> {
+    async fn update_deck_file_status<F: FnOnce(&mut DeckFileStatus) -> R, R>(
+        &self,
+        deck_id: u32,
+        f: F,
+    ) -> Result<R> {
         let deck = self.get_deck(deck_id).await?;
         deck.update_status(f).await
     }
@@ -305,8 +314,11 @@ impl DeckMixer {
                     let lock = lock.status.read().await;
                     match &*lock {
                         DeckFileStatus::Playing { payload, .. }
-                        | DeckFileStatus::Paused { payload, .. } => (Some(metadata), Some(DeckFilePayloadSnapshot::new(payload).await)),
-                        _ => (Some(metadata), None)
+                        | DeckFileStatus::Paused { payload, .. } => (
+                            Some(metadata),
+                            Some(DeckFilePayloadSnapshot::new(payload).await),
+                        ),
+                        _ => (Some(metadata), None),
                     }
                 }
                 None => (None, None),

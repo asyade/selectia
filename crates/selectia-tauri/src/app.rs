@@ -1,13 +1,19 @@
-use std::{ops::{Deref, DerefMut}, sync::RwLockReadGuard};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::RwLockReadGuard,
+};
 
-use audio_player::{audio_player, AudioPlayerEvent, AudioPlayerService};
+use audio_player::{audio_player, AudioPlayer, AudioPlayerEvent, AudioPlayerService};
 use demuxer::{Demuxer, DemuxerEvent, DemuxerStatus, DemuxerTask};
 use dto::Events;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
 use tauri::{AppHandle, Emitter, State};
-use theater::service::{async_channel_iterator, channel_iterator};
+use theater::{
+    context::OwnedTheaterContext,
+    service::{async_channel_iterator, channel_iterator},
+};
 use tokio::sync::RwLockWriteGuard;
 use worker::{
     tasks::{BackgroundTask, FileAnalysisTask, TaskPayload, TaskStatus},
@@ -20,14 +26,8 @@ use crate::commands::*;
 
 #[derive(Clone)]
 pub struct App {
-    pub(crate) handle: Option<AppHandle>,
-    pub(crate) database: Database,
-    pub(crate) audio_player: AudioPlayerService,
-    pub(crate) worker: Worker,
-    pub(crate) state_machine: StateMachine,
-    pub(crate) file_loader: FileLoader,
+    pub(crate) context: OwnedTheaterContext,
     pub(crate) interactive_list_context: ContextProvider<InteractiveListContext>,
-    pub(crate) demuxer: Demuxer,
 }
 
 pub struct AppState(pub Arc<RwLock<App>>);
@@ -36,59 +36,44 @@ pub type AppArg<'a> = State<'a, AppState>;
 
 impl App {
     pub async fn new() -> Self {
+        let context = OwnedTheaterContext::new().await;
+
         let settings = Settings::load().await.expect("Failed to load settings");
-        let database = Database::new(&settings.database_path).await.unwrap();
-        let audio_player = audio_player(database.clone());
-        let state_machine = state_machine(database.clone());
-        let file_loader = file_loader(state_machine.clone());
-        let demuxer = demuxer::demuxer(settings.demuxer_data_path.clone());
-        let worker = worker(demuxer.clone(), database.clone());
+
+        context
+            .register_service(
+                Database::new(&settings.database_path)
+                    .await
+                    .expect("Failed to initialize database"),
+            )
+            .await;
+
+        audio_player({ &*context }.clone()).await;
+        state_machine({ &*context }.clone()).await;
+        file_loader({ &*context }.clone()).await;
+        demuxer::demuxer({ &*context }.clone(), settings.demuxer_data_path.clone()).await;
+        worker({ &*context }.clone()).await;
 
         App {
-            handle: None,
-            database,
-            audio_player,
-            worker,
-            state_machine,
-            file_loader,
-            demuxer,
+            context: context,
             interactive_list_context: ContextProvider::new(),
         }
     }
 
-    pub fn emit_identified<T: Into<Events>>(&self, id: u32, event: T) -> eyre::Result<()> {
-        let event: Events = event.into();
-        let handle = self
-            .handle
-            .as_ref()
-            .expect("handle() `App::handle` called before setup");
-        handle.emit(&format!("{}:{}", event.name(), id), event)?;
-        Ok(())
-    }
-
-    pub fn emit<T: Into<Events>>(&self, event: T) -> eyre::Result<()> {
-        let event: Events = event.into();
-        let handle = self
-            .handle
-            .as_ref()
-            .expect("handle() `App::handle` called before setup");
-        handle.emit(event.name(), event)?;
-        Ok(())
-    }
-
-
+    /// Called once tauri is ready this function will create required binding betwen the global Theater and the tauri runtime.
     pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
-        self.handle = Some(handle.clone());
-
-        let app_handle = self.clone();
-        self.worker
+        self.context.register_service(handle.clone());
+        let ui_dispatcher = handle.clone();
+        self.context
+            .get_service::<Worker>()
+            .await?
             .register_channel(channel_iterator(move |msg| match msg {
                 WorkerEvent::QueueTaskCreated { id, status } => {
                     let task = dto::WorkerQueueTask {
                         id,
                         status: status.into(),
                     };
-                    let _ = app_handle.emit(dto::WorkerQueueTaskCreatedEvent { task });
+                    let _ = ui_dispatcher.emit_event(dto::WorkerQueueTaskCreatedEvent { task });
                 }
                 WorkerEvent::QueueTaskUpdated {
                     id,
@@ -103,91 +88,62 @@ impl App {
                             status: status.into(),
                         })
                     };
-                    let _ = app_handle.emit(dto::WorkerQueueTaskUpdatedEvent { id, task });
+                    let _ = ui_dispatcher.emit_event(dto::WorkerQueueTaskUpdatedEvent { id, task });
                 }
             }))
             .await;
 
-        let app_handle = self.clone();
-        self.audio_player
-            .register_channel(channel_iterator(move |msg| {
-                match msg {
-                    AudioPlayerEvent::DeckCreated { id } => {
-                        let _ = app_handle.emit(dto::AudioDeckCreatedEvent { id });
-                    },
-                    AudioPlayerEvent::DeckFileMetadataUpdated { id, metadata } => {
-                        let _ = app_handle.emit_identified(id, dto::AudioDeckFileMetadataUpdatedEvent { id, metadata: metadata.into() });
-                    },
-                    AudioPlayerEvent::DeckFilePayloadUpdated { id, payload } => {
-                        let _ = app_handle.emit_identified(id, dto::AudioDeckFilePayloadUpdatedEvent { id, payload: payload.into() });
-                    },
-                    AudioPlayerEvent::DeckFileStatusUpdated { id, status } => {
-                        let _ = app_handle.emit_identified(id, dto::AudioDeckFileStatusUpdatedEvent { id, status: status.into() });
-                    },
+        let ui_dispatcher = handle.clone();
+        self.context
+            .get_service::<AudioPlayerService>()
+            .await?
+            .register_channel(channel_iterator(move |msg| match msg {
+                AudioPlayerEvent::DeckCreated { id } => {
+                    let _ = ui_dispatcher.emit_event(dto::AudioDeckCreatedEvent { id });
+                }
+                AudioPlayerEvent::DeckFileMetadataUpdated { id, metadata } => {
+                    let _ = ui_dispatcher.emit_identified_event(
+                        id,
+                        dto::AudioDeckFileMetadataUpdatedEvent {
+                            id,
+                            metadata: metadata.into(),
+                        },
+                    );
+                }
+                AudioPlayerEvent::DeckFilePayloadUpdated { id, payload } => {
+                    let _ = ui_dispatcher.emit_identified_event(
+                        id,
+                        dto::AudioDeckFilePayloadUpdatedEvent {
+                            id,
+                            payload: payload.into(),
+                        },
+                    );
+                }
+                AudioPlayerEvent::DeckFileStatusUpdated { id, status } => {
+                    let _ = ui_dispatcher.emit_identified_event(
+                        id,
+                        dto::AudioDeckFileStatusUpdatedEvent {
+                            id,
+                            status: status.into(),
+                        },
+                    );
                 }
             }))
             .await;
 
-        let app_handle = self.clone();
-        self.state_machine
-            .register_channel(async_channel_iterator(move |msg| {
-                let app_handle = app_handle.clone();
-                async move {
-                    match msg {
-                        StateMachineEvent::FileIngested { file, new: true } => {
-                            if let Err(e) =
-                                app_handle.schedule_file_analysis(file.metadata_id).await
-                            {
-                                error!("Failed to schedule file analysis: {}", e);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }))
-            .await;
-
+        info!("Setup done, starting scene ...");
+        self.context.ready().await;
         Ok(())
     }
-
 
     pub async fn schedule_file_analysis(&self, metadata_id: i64) -> eyre::Result<()> {
         let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });
-        self.worker.send(WorkerTask::Schedule(task)).await?;
-        Ok(())
-    }
-
-    pub fn handle(&self) -> &AppHandle {
-        self.handle
-            .as_ref()
-            .expect("handle() `App::handle` called before setup")
-    }
-
-    pub async fn load_directory(self, path: PathBuf) -> eyre::Result<()> {
-        LoadDirectory::new(self.file_loader.clone(), path)?
-            .load()
+        self.context
+            .get_service::<Worker>()
+            .await?
+            .send(WorkerTask::Schedule(task))
             .await?;
         Ok(())
-    }
-
-    pub async fn get_tag_names(self) -> eyre::Result<Vec<TagName>> {
-        self.database.get_tag_names().await
-    }
-
-    pub async fn get_tags_by_name(self, tag_name: &str) -> eyre::Result<Vec<Tag>> {
-        self.database.get_tags_by_name(tag_name).await
-    }
-
-    pub async fn get_entries(&self, filter: &EntryViewFilter) -> eyre::Result<Vec<EntryView>> {
-        self.database.get_entries(filter).await
-    }
-
-    pub async fn list(self) -> eyre::Result<Self> {
-        let files = self.database.list_files().await?;
-        for file in files {
-            println!("{}", file.path);
-        }
-        Ok(self)
     }
 }
 
