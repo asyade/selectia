@@ -18,8 +18,8 @@ pub struct BpmAnalyser {
 
 #[derive(Debug)]
 pub struct BpmAnalyserResult {
-    average_bpm: Option<BpmPlot>,
-    alternative_bpm: Vec<f32>,
+    pub average_bpm: Option<BpmPlot>,
+    pub alternative_bpm: Vec<f32>,
 }
 
 #[derive(Debug, Clone, Copy)]

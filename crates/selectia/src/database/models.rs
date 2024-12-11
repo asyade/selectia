@@ -66,6 +66,7 @@ impl TagName {
     pub const ALBUM_ID: i64 = 6;
     pub const GENRE_ID: i64 = 7;
     pub const PLAYLIST_ID: i64 = 8;
+    pub const TEMPO_ID: i64 = 9;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

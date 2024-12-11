@@ -1,37 +1,14 @@
-use std::{
-    any::{Any, TypeId}, future::IntoFuture, pin::Pin, task::{Context, Poll}
-};
-
 use crate::prelude::*;
-
 pub use addresable_service::*;
 pub use addresable_service_with_dispatcher::{dispatcher::*, AddressableServiceWithDispatcher};
 pub use threaded_service::*;
 
-pub mod audio_player;
-pub mod embedding;
-pub mod file_loader;
-pub mod state_machine;
-pub mod worker;
-pub mod demuxer;
-
 pub type ServiceSender<T> = sync::mpsc::Sender<T>;
 pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;
 
-pub trait ServiceContext {
-    fn services(&self) -> &HashMap<TypeId, Box<dyn Any>>;
-}
-
-pub trait FromServiceContext: Sized + 'static {
-    fn from_context<'a, T: ServiceContext>(context: &'a T) -> &'a Self {
-        let service = context.services().get(&TypeId::of::<Self>()).unwrap();
-        service.downcast_ref::<Self>().unwrap()
-    }
-}
-
 pub trait Service<T> {
-    fn blocking_send(&self, message: T) -> Result<()>;
-    fn send(&self, message: T) -> impl Future<Output = Result<()>> + Send;
+    fn blocking_send(&self, message: T) -> TheaterResult<()>;
+    fn send(&self, message: T) -> impl Future<Output = TheaterResult<()>> + Send;
 }
 
 pub trait ChannelService<T>: Service<T> {
@@ -49,7 +26,7 @@ pub struct TaskCallback<T> {
     pub sender: Arc<RwLock<Option<sync::oneshot::Sender<T>>>>,
 }
 
-impl <T> std::fmt::Debug for TaskCallback<T> {
+impl<T> std::fmt::Debug for TaskCallback<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "TaskCallback")
     }
@@ -70,21 +47,24 @@ impl<T: Send + 'static> TaskCallback<T> {
         )
     }
 
-    pub async fn resolve(&self, value: T) -> Result<()> {
+    pub async fn resolve(&self, value: T) -> TheaterResult<()> {
         let sender = {
             let mut lock = self.sender.write().await;
-            lock.take()
-                .ok_or_else(|| eyre::eyre!("Callback already resolved"))?
+            lock.take().ok_or(TheaterError::CallbackAlreadyResolved)?
         };
         sender
             .send(value)
-            .map_err(|_| eyre!("TaskCallback sender dropped"))
+            .map_err(|_| TheaterError::CallbackSenderDropped)?;
+        Ok(())
     }
 }
 
 impl<T: Send + 'static> TaskCallbackReceiver<T> {
-    pub async fn wait(self) -> Result<T> {
-        Ok(self.receiver.await?)
+    pub async fn wait(self) -> TheaterResult<T> {
+        Ok(self
+            .receiver
+            .await
+            .map_err(|_| TheaterError::CallbackOwnerDropped)?)
     }
 }
 
@@ -98,17 +78,19 @@ mod addresable_service {
     }
 
     impl<T: Task> Service<T> for AddressableService<T> {
-        async fn send(&self, message: T) -> Result<()> {
+        async fn send(&self, message: T) -> TheaterResult<()> {
             self.sender
                 .send(message)
                 .await
-                .map_err(|_| eyre!("Failed to send message"))
+                .map_err(|_| TheaterError::ServiceNotAlive)?;
+            Ok(())
         }
 
-        fn blocking_send(&self, message: T) -> Result<()> {
+        fn blocking_send(&self, message: T) -> TheaterResult<()> {
             self.sender
                 .blocking_send(message)
-                .map_err(|_| eyre!("Failed to send message"))
+                .map_err(|_| TheaterError::ServiceNotAlive)?;
+            Ok(())
         }
     }
 
@@ -121,7 +103,7 @@ mod addresable_service {
     impl<T: Task> AddressableService<T> {
         pub fn new<Fut, F>(background_task: F) -> Self
         where
-            Fut: Future<Output = Result<()>> + Send + 'static,
+            Fut: Future<Output = TheaterResult<()>> + Send + 'static,
             F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>) -> Fut,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
@@ -145,7 +127,7 @@ mod addresable_service_with_dispatcher {
     impl<T: Task, R: Event> AddressableServiceWithDispatcher<T, R> {
         pub fn new<Fut, F>(background_task: F) -> Self
         where
-            Fut: Future<Output = Result<()>> + Send + 'static,
+            Fut: Future<Output = TheaterResult<()>> + Send + 'static,
             F: FnOnce(sync::mpsc::Receiver<T>, sync::mpsc::Sender<T>, EventDispatcher<R>) -> Fut,
         {
             let dispatcher = EventDispatcher::new();
@@ -173,20 +155,21 @@ mod addresable_service_with_dispatcher {
     }
 
     impl<T: Task, R: Event> Service<T> for AddressableServiceWithDispatcher<T, R> {
-        async fn send(&self, message: T) -> Result<()> {
+        async fn send(&self, message: T) -> TheaterResult<()> {
             self.service.send(message).await
         }
 
-        fn blocking_send(&self, message: T) -> Result<()> {
+        fn blocking_send(&self, message: T) -> TheaterResult<()> {
             self.service
                 .sender
                 .blocking_send(message)
-                .map_err(|_| eyre!("Failed to send message"))
+                .map_err(|_| TheaterError::ServiceNotAlive)?;
+            Ok(())
         }
     }
 
     pub(super) mod dispatcher {
-        use crate::{prelude::*, services::Event};
+        use crate::prelude::*;
 
         #[derive(Clone)]
         pub struct EventDispatcher<T> {
@@ -205,30 +188,31 @@ mod addresable_service_with_dispatcher {
                 }
             }
 
-            pub async fn dispatch(&self, event: T) -> Result<()> {
+            pub async fn dispatch(&self, event: T) -> TheaterResult<()> {
                 self.dispatcher
                     .send(event)
                     .await
-                    .map_err(|_| eyre!("Failed to send event to dispatcher"))
+                    .map_err(|_| TheaterError::ServiceNotAlive)?;
+                Ok(())
             }
 
-            pub fn dispatch_blocking(&self, event: T) -> Result<()> {
+            pub fn dispatch_blocking(&self, event: T) -> TheaterResult<()> {
                 self.dispatcher
                     .blocking_send(event)
-                    .map_err(|_| eyre!("Failed to send event to dispatcher"))
+                    .map_err(|_| TheaterError::ServiceNotAlive)?;
+                Ok(())
             }
 
             async fn proxy(
                 mut receiver: sync::mpsc::Receiver<T>,
                 listeners: Arc<RwLock<Vec<sync::mpsc::Sender<T>>>>,
-            ) -> Result<()> {
+            ) -> TheaterResult<()> {
                 while let Some(event) = receiver.recv().await {
                     let listeners = listeners.read().await;
                     for listener in listeners.iter() {
-                        listener
-                            .send(event.clone())
-                            .await
-                            .map_err(|_| eyre!("Failed to send event to listener"))?;
+                        if let Err(e) = listener.send(event.clone()).await {
+                            warn!("Failed to send event to listener: {}", e);
+                        }
                     }
                 }
                 Ok(())
@@ -252,7 +236,7 @@ mod threaded_service {
     impl<T: Task> ThreadedService<T> {
         pub fn new<F>(background_task: F) -> Self
         where
-            F: FnOnce(sync::mpsc::Receiver<T>) -> Result<()> + Send + 'static,
+            F: FnOnce(sync::mpsc::Receiver<T>) -> TheaterResult<()> + Send + 'static,
         {
             let (sender, receiver) = sync::mpsc::channel(4096);
             let _background_handle = std::thread::spawn(move || background_task(receiver));
@@ -267,25 +251,24 @@ mod threaded_service {
     }
 
     impl<T: Task> Service<T> for ThreadedService<T> {
-        async fn send(&self, message: T) -> Result<()> {
+        async fn send(&self, message: T) -> TheaterResult<()> {
             self.sender
                 .send(message)
                 .await
-                .map_err(|_| eyre!("Failed to send message"))
+                .map_err(|_| TheaterError::ServiceNotAlive)?;
+            Ok(())
         }
 
-        fn blocking_send(&self, message: T) -> Result<()> {
+        fn blocking_send(&self, message: T) -> TheaterResult<()> {
             self.sender
                 .blocking_send(message)
-                .map_err(|_| eyre!("Failed to send message"))
+                .map_err(|_| TheaterError::ServiceNotAlive)?;
+            Ok(())
         }
     }
 }
 
-pub fn channel_iterator<
-    IT: Task,
-    F: FnMut(IT) -> () + Send + 'static,
->(
+pub fn channel_iterator<IT: Task, F: FnMut(IT) -> () + Send + 'static>(
     mut f: F,
 ) -> tokio::sync::mpsc::Sender<IT> {
     let (sender, mut receiver) = tokio::sync::mpsc::channel(4096);
@@ -297,8 +280,6 @@ pub fn channel_iterator<
     });
     sender_clone
 }
-
-
 
 pub fn async_channel_iterator<
     IT: Task,

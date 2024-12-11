@@ -6,3 +6,4 @@ INSERT INTO tag_name (name, index_in_ui) VALUES ('artist', 0);
 INSERT INTO tag_name (name, index_in_ui) VALUES ('album', 1);
 INSERT INTO tag_name (name, index_in_ui) VALUES ('genre', 2);
 INSERT INTO tag_name (name, index_in_ui) VALUES ('playlist', 3);
+INSERT INTO tag_name (name, index_in_ui) VALUES ('tempo', 4);

@@ -75,6 +75,18 @@ impl Database {
         Ok(files)
     }
 
+    pub async fn delete_metadata_tag_by_tag_name_id(
+        &self,
+        metadata_id: i64,
+        tag_name_id: i64,
+    ) -> Result<()> {
+        sqlx::query!("DELETE FROM metadata_tag WHERE metadata_id = ? AND tag_id = ?", metadata_id, tag_name_id)
+            .execute(&self.pool)
+            .await?;
+        // TODO: delete tag if it has no metadata_tag associated
+        Ok(())
+    }
+
     pub async fn set_metadata_tag_by_tag_name_id(
         &self,
         metadata_id: i64,

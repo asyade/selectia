@@ -91,9 +91,6 @@ impl FileAnalysisTask {
     pub async fn process(&self, context: TaskContext) -> Result<()> {
         use fundsp::prelude::*;
         const MIN_ANALYSIS_DURATION: f64 = 180.0;
-        const MAX_ANALYSIS_DURATION: f64 = 480.0;
-        const MIN_ANALYSIS_AMPLITUDE: f32 = 0.7;
-        const MAX_ANALYSIS_SAMPLE_RATE: u32 = 48000;
 
         let file = context
             .database
@@ -143,7 +140,7 @@ impl FileAnalysisTask {
         let drum_stem = demux_result.get_stem(DemuxResult::DRUMS).ok_or(AudioFileError::AudioSeparationFailed)?;
         let drum_file_path = PathBuf::from(drum_stem.path.as_str());
 
-        tokio::task::spawn_blocking(move || {
+        let bpm_analysis_result = tokio::task::spawn_blocking(move || {
             let wave = EncodedAudioFile::from_file(drum_file_path)
                 .and_then(|f| f.read_mono_wave_until(|w| Ok(true)))?;
             let mut wave = wave.filter(
@@ -156,26 +153,12 @@ impl FileAnalysisTask {
             let onesets = payload.detect_onesets(512 as usize)?;
             let bpm_analyser = BpmAnalyser::new(BpmAnalyserOptions { range: (80.0, 280.0) }, onesets).get_result().unwrap();
             info!(bpm_analyser=?bpm_analyser, "BPM analysis completed");
-            AudioFileResult::Ok(())
+            AudioFileResult::Ok(bpm_analyser)
         }).await??;
 
-        // .await??;
-        // let drum_file_payload = drum_file_payload
-        //     .into_mono()
-        //     .unwrap()
-        //     .into_processed_payload(&mut (highpass_hz(38.0, 0.7) >> lowpass_hz(1000.0, 0.7)))
-        //     .unwrap();
 
-        // drum_file_payload
-        //     .wav_export("C:\\Users\\corbe\\Desktop\\test.wav")
-        //     .unwrap();
-
-        // let drum_bpm = drum_file_payload.detect_bpm().unwrap();
-        // dbg!(drum_bpm);
-
-        // info!("Stem extraction task completed !");
-        // dbg!(result);
-        // // Find differents BPM regions (a region is a slice of the track with a consistent BPM, consistent mean that the BPM do not vary more than X perecent from the average BPM)
+        // let _ = context.database.delete_metadata_tag_by_tag_name_id(self.metadata_id, TagName::TEMPO_ID);
+        // context.database.set_metadata_tag_by_tag_name_id(self.metadata_id, TagName::TEMPO_ID, bpm_analysis_result.average_bpm.unwrap().bpm.to_string())?;
 
         Ok(())
     }
