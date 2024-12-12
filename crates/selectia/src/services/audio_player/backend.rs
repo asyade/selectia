@@ -1,20 +1,16 @@
-#![allow(dead_code)]
 use crate::prelude::*;
 use audio_player::{
-    AudioPlayerEvent, AudioPlayerService, BufferedSamplesSource, DeckMixer, PlayerDeck,
+    AudioPlayerEvent, BufferedSamplesSource, DeckMixer,
     SamplesSource,
 };
-use cpal::{traits::*, StreamConfig, SupportedBufferSize};
-use cpal::{FromSample, Sample, SizedSample};
+use cpal::{traits::*, StreamConfig};
+use cpal::{FromSample, SizedSample};
 use dasp::sample::SignedSample;
 use dasp::signal;
 use dasp::Signal;
-use std::any::Any;
-use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 
 pub type BackendSender = mpsc::Sender<BackendMessage>;
-pub type BackendReceiver = mpsc::Receiver<BackendMessage>;
 
 #[derive(PartialEq)]
 pub enum BackendMessage {

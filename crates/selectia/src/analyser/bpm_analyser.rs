@@ -4,7 +4,6 @@
 use crate::prelude::*;
 use std::collections::BTreeMap;
 
-use fundsp::Num;
 use selectia_audio_file::audio_file::AudioBeatOneset;
 
 pub struct BpmAnalyserOptions {

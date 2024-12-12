@@ -1,18 +1,13 @@
-use std::{
-    panic::panic_any,
-    thread,
-    time::{Duration, Instant},
-};
+use crate::analyser::bpm_analyser::{BpmAnalyser, BpmAnalyserOptions};
 use crate::prelude::*;
-use crate::{analyser::bpm_analyser::{BpmAnalyser, BpmAnalyserOptions}, prelude::*};
-use chrono::{DateTime, Utc};
 use demucs::backend::DemuxResult;
-use demuxer::{DemuxerSingleton, DemuxerTask};
-use eyre::{bail, OptionExt};
+use eyre::bail;
 use models::{FileVariationMetadata, Task};
 use selectia_audio_file::{
-    audio_file::{AudioFilePayload, EncodedAudioFile}, error::{AudioFileError, AudioFileResult}
+    audio_file::{AudioFilePayload, EncodedAudioFile},
+    error::{AudioFileError, AudioFileResult},
 };
+use std::time::Instant;
 
 #[derive(Clone, Debug)]
 pub struct BackgroundTask {
@@ -137,7 +132,9 @@ impl FileAnalysisTask {
             "Stem extraction task completed"
         );
 
-        let drum_stem = demux_result.get_stem(DemuxResult::DRUMS).ok_or(AudioFileError::AudioSeparationFailed)?;
+        let drum_stem = demux_result
+            .get_stem(DemuxResult::DRUMS)
+            .ok_or(AudioFileError::AudioSeparationFailed)?;
         let drum_file_path = PathBuf::from(drum_stem.path.as_str());
 
         let _bpm_analysis_result = tokio::task::spawn_blocking(move || {
@@ -151,11 +148,18 @@ impl FileAnalysisTask {
             let payload = AudioFilePayload::from_wave(wave)?;
             let payload = payload.resample(44100.0)?;
             let onesets = payload.detect_onesets(512, 128)?;
-            let bpm_analyser = BpmAnalyser::new(BpmAnalyserOptions { range: (80.0, 280.0) }, onesets).get_result().unwrap();
+            let bpm_analyser = BpmAnalyser::new(
+                BpmAnalyserOptions {
+                    range: (80.0, 280.0),
+                },
+                onesets,
+            )
+            .get_result()
+            .unwrap();
             info!(bpm_analyser=?bpm_analyser, "BPM analysis completed");
             AudioFileResult::Ok(bpm_analyser)
-        }).await??;
-
+        })
+        .await??;
 
         // let _ = context.database.delete_metadata_tag_by_tag_name_id(self.metadata_id, TagName::TEMPO_ID);
         // context.database.set_metadata_tag_by_tag_name_id(self.metadata_id, TagName::TEMPO_ID, bpm_analysis_result.average_bpm.unwrap().bpm.to_string())?;

@@ -10,7 +10,7 @@ pub enum FileLoaderTask {
 #[singleton_service(FileLoader)]
 pub async fn file_loader(
     ctx: ServiceContext,
-    mut rx: ServiceReceiver<FileLoaderTask>,
+    rx: ServiceReceiver<FileLoaderTask>,
 ) -> Result<()> {
     let state_machine = ctx.get_singleton_address::<StateMachine>().await?;
     let stream = futures::stream::unfold(rx, |mut recv| async move {

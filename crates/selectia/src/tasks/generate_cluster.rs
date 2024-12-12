@@ -1,5 +1,3 @@
-use models::Tag;
-
 use crate::prelude::*;
 
 pub struct GenerateClusterTask {

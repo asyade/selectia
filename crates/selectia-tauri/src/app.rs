@@ -4,7 +4,6 @@ use std::{
 };
 
 use audio_player::{audio_player, AudioPlayer, AudioPlayerEvent, AudioPlayerService};
-use demuxer::{DemuxerEvent, DemuxerSingleton, DemuxerStatus, DemuxerTask};
 use dto::Events;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
@@ -56,9 +55,9 @@ impl App {
         FileLoader::spawn(&context)
             .await
             .expect("Failed to spawn FileLoader");
-        DemuxerSingleton::spawn(&context, settings.demuxer_data_path.clone())
+        Demuxer::spawn(&context, settings.demuxer_data_path.clone())
             .await
-            .expect("Failed to spawn DemuxerSingleton");
+            .expect("Failed to spawn Demuxer");
         Worker::spawn(&context)
             .await
             .expect("Failed to spawn Worker");

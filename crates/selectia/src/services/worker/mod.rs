@@ -1,8 +1,7 @@
-use demuxer::DemuxerSingleton;
 use models::Task as TaskModel;
 use tasks::{BackgroundTask, TaskContext, TaskPayload, TaskStatus};
 
-use crate::{database, prelude::*};
+use crate::prelude::*;
 
 pub mod tasks;
 
@@ -35,9 +34,13 @@ pub async fn worker(
     dispatcher: EventDispatcher<WorkerEvent>,
 ) -> Result<()> {
     let database = ctx.get_singleton::<Database>().await?;
-    let demuxer = ctx.get_singleton_address::<DemuxerSingleton>().await?;
+    let demuxer = ctx.get_singleton_address::<Demuxer>().await?;
     let introspect_address = ctx.get_singleton_address::<Worker>().await?;
-    let mut pool = WorkerPool::new(DEFAULT_WORKER_POOL_SIZE, introspect_address.clone(), dispatcher.clone());
+    let mut pool = WorkerPool::new(
+        DEFAULT_WORKER_POOL_SIZE,
+        introspect_address.clone(),
+        dispatcher.clone(),
+    );
 
     // Sanitize task status to ensure that no task is in processing status due to a crash
     let sanitized = database.sanitize_task_status().await?;

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use demucs::{backend::DemuxResult, Demucs};
 
 use crate::prelude::*;
@@ -14,11 +12,6 @@ pub enum DemuxerTask {
     StatusUpdate {
         status: DemuxerStatus,
     },
-}
-
-#[derive(Debug, Clone, Task)]
-pub enum DemuxerEvent {
-    StatusUpdate { status: DemuxerStatus },
 }
 
 #[derive(Clone)]
@@ -51,12 +44,12 @@ impl PartialEq for DemuxerStatus {
     }
 }
 
-#[singleton_service(DemuxerSingleton)]
-pub async fn demuxer(ctx: ServiceContext, mut rx: ServiceReceiver<DemuxerTask>, dispatcher: EventDispatcher<DemuxerEvent>,  data_path: PathBuf) -> Result<()> {
+#[singleton_service(Demuxer)]
+pub async fn demuxer(ctx: ServiceContext, mut rx: ServiceReceiver<DemuxerTask>,  data_path: PathBuf) -> Result<()> {
     let mut current_status = DemuxerStatus::None;
 
     // Trigger status update to perform first check
-    let introspect_address = ctx.get_singleton_address::<DemuxerSingleton>().await?;
+    let introspect_address = ctx.get_singleton_address::<Demuxer>().await?;
     introspect_address.send(DemuxerTask::StatusUpdate {
         status: DemuxerStatus::None,
     }).await?;
@@ -108,7 +101,7 @@ async fn load_demuxer(data_path: PathBuf, sender: AddressableService<DemuxerTask
             }
             let status = demucs.status.read().await;
             match &*status {
-                demucs::Status::Ready { backend } => {
+                demucs::Status::Ready { .. } => {
                     sender
                         .send(DemuxerTask::StatusUpdate {
                             status: DemuxerStatus::Ready {

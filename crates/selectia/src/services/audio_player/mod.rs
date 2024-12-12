@@ -1,19 +1,12 @@
-use std::{
-    collections::BTreeMap,
-    ops::{Deref, DerefMut},
-    sync::atomic::AtomicU32,
-    task::Context,
-};
+use backend::{Backend, BackendHandle, BackendMessage};
+use cpal::traits::{DeviceTrait, HostTrait};
+use eyre::OptionExt;
+use std::{collections::BTreeMap, sync::atomic::AtomicU32};
 
 use crate::prelude::*;
 
-use backend::{Backend, BackendHandle, BackendMessage};
-use cpal::traits::{DeviceTrait, HostTrait};
-use dasp::sample;
 pub use deck::*;
-use eyre::OptionExt;
-use futures::executor::block_on;
-use symphonia::core::meta;
+
 mod backend;
 mod deck;
 
@@ -89,7 +82,7 @@ impl<T> BufferedSamplesSource<T> {
         }
     }
 
-    pub fn fill_buffer(&mut self, buffer_size: usize, sample_rate: u32, channels: usize) -> &[T]
+    pub fn fill_buffer(&mut self, buffer_size: usize, _sample_rate: u32, _channels: usize) -> &[T]
     where
         T: cpal::Sample + cpal::FromSample<f32>,
     {
