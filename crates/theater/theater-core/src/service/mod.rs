@@ -125,4 +125,10 @@ mod addresable_service {
             instance
         }
     }
+
+    impl <T: Task> Into<sync::mpsc::Sender<T>> for AddressableService<T> {
+        fn into(self) -> sync::mpsc::Sender<T> {
+            self.sender
+        }
+    }
 }

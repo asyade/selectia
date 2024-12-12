@@ -22,6 +22,17 @@ pub async fn service_a(
     Ok(())
 }
 
+#[singleton_service(ServiceB)]
+pub async fn service_b(
+    _ctx: ServiceContext,
+    mut rx: ServiceReceiver<ServiceAEvent>,
+) -> TheaterResult<()> {
+    tracing::info!("ServiceB spawned");
+    let msg = rx.recv().await.unwrap();
+    tracing::info!("ServiceB received event: {:?}", msg);
+    Ok(())
+}
+
 #[tokio::test]
 async fn basic_system() {
     tracing_subscriber::fmt()
@@ -31,41 +42,31 @@ async fn basic_system() {
         .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
         .init();
 
+    tracing::info!("Starting basic system");
+
     let ctx = OwnedTheaterContext::new().await;
 
     ServiceA::spawn(&*ctx, "hello".to_string()).await.unwrap();
 
     ctx.ready().await;
     let svg = ctx.get_singleton_address::<ServiceA>().await.unwrap();
-    let dispatcher = ctx.get_singleton_dispatcher::<ServiceA, ServiceAEvent>().await.unwrap();
+    let dispatcher = ctx
+        .get_singleton_dispatcher::<ServiceA, ServiceAEvent>()
+        .await
+        .unwrap();
 
-    dispatcher.register(channel_iterator(|event|{
-        println!("Received event: {:?}", event);
-    })).await;
+    dispatcher
+        .register(ServiceB::spawn(&*ctx).await.unwrap())
+        .await;
+
+    dispatcher
+        .register(channel_iterator(|event| {
+            println!("Received event: {:?}", event);
+        }))
+        .await;
 
     let (callback, recv) = TaskCallback::new();
     svg.send(ServiceATask { callback }).await.unwrap();
 
     let _ = recv.wait().await;
 }
-
-#[tokio::test]
-async fn test_running_system() {
-    tracing_subscriber::fmt()
-        .with_env_filter("trace")
-        .pretty()
-        .with_file(true)
-        .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
-        .init();
-
-    let ctx = OwnedTheaterContext::new().await;
-    ctx.ready().await;
-
-    ServiceA::spawn(&*ctx, "hello".to_string()).await.unwrap();
-    let svg = ctx.get_singleton_address::<ServiceA>().await.unwrap();
-    let (callback, recv) = TaskCallback::new();
-    svg.send(ServiceATask { callback }).await.unwrap();
-    let _ = recv.wait().await;
-}
-
-//TODO: test launching a service when the context is ready (spoiler alert: it's not working)

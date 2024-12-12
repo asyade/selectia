@@ -55,8 +55,8 @@ impl<T: Event> EventDispatcher<T> {
         Ok(())
     }
 
-    pub async fn register(&self, listener: sync::mpsc::Sender<T>) {
-        self.listeners.write().await.push(listener);
+    pub async fn register(&self, listener: impl Into<sync::mpsc::Sender<T>>) {
+        self.listeners.write().await.push(listener.into());
     }
 }
 

@@ -214,7 +214,7 @@ pub fn singleton_service(input: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         impl #service_name {
-            pub async fn spawn<T: GlobalTheaterContext + 'static>(parent_ctx: &T, #(#extra_args_params),*) -> TheaterResult<()> {
+            pub async fn spawn<T: GlobalTheaterContext + 'static>(parent_ctx: &T, #(#extra_args_params),*) -> TheaterResult<AddressableService<#task_type_name>> {
                 let ctx = ServiceContext::new::<#service_name>(parent_ctx.as_global().clone());
                 let service = AddressableService::<#task_type_name>::new(&ctx, |ctx, rx| async move {
 
@@ -230,7 +230,7 @@ pub fn singleton_service(input: TokenStream, item: TokenStream) -> TokenStream {
 
                 #(#dispatcher_registration)*
 
-                Ok(())
+                Ok(ctx.get_singleton_address::<#service_name>().await?)
             }
         }
     };
