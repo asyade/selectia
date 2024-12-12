@@ -8,7 +8,7 @@ use dto::Events;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
 use state_machine::StateMachineEvent;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use theater::{
     context::OwnedTheaterContext,
     dispatcher::{async_channel_iterator, channel_iterator},
@@ -26,7 +26,6 @@ use crate::commands::*;
 #[derive(Clone)]
 pub struct App {
     pub(crate) context: OwnedTheaterContext,
-    pub(crate) interactive_list_context: ContextProvider<InteractiveListContext>,
 }
 
 pub type AppArg<'a> = State<'a, App>;
@@ -64,12 +63,18 @@ impl App {
 
         App {
             context: context,
-            interactive_list_context: ContextProvider::new(),
         }
     }
 
     /// Called once tauri is ready this function will create required binding betwen the global Theater and the tauri runtime.
     pub async fn setup(&self, handle: AppHandle) -> eyre::Result<()> {
+        handle.manage(self.context.get_singleton::<Database>().await?);
+        handle.manage(self.context.get_singleton_address::<AudioPlayerService>().await?);
+        handle.manage(self.context.get_singleton_address::<StateMachine>().await?);
+        handle.manage(self.context.get_singleton_address::<FileLoader>().await?);
+        handle.manage(self.context.get_singleton_address::<Worker>().await?);
+        handle.manage(ContextProvider::<InteractiveListContext>::new());
+
         self.context.register_singleton(handle.clone()).await.expect("Failed to register app handle");
         let ui_dispatcher = handle.clone();
         self.context
