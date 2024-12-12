@@ -7,6 +7,8 @@ pub type ServiceSender<T> = sync::mpsc::Sender<T>;
 pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;
 
 pub trait Service<T> {
+    
+
     fn blocking_send(&self, message: T) -> TheaterResult<()>;
     fn send(&self, message: T) -> impl Future<Output = TheaterResult<()>> + Send;
 
@@ -26,23 +28,6 @@ pub trait Service<T> {
             }
             if let Err(e) = ctx.destroy().await {
                 error!("failed to cleanup service context: {:?}", e);
-            }
-        });
-    }
-
-    //TODO: remove this
-    fn spawn_task<
-        Fut: Future<Output = Result<(), E>> + Send + 'static,
-        E: Send + 'static + Debug,
-    >(
-        &self,
-        ctx: TheaterContext,
-        task: Fut,
-    ) {
-        let _handle = tokio::task::spawn(async move {
-            ctx.is_ready().await;
-            if let Err(e) = task.await {
-                error!("task failed: {:?}", e);
             }
         });
     }

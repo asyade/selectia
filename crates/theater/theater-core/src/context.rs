@@ -207,6 +207,11 @@ impl GlobalTheaterContext for ServiceContext {
 }
 
 impl ServiceHostContext for ServiceContext {
+    /// TODO: Nothing guarantees that the service context is initialized before the service is spawned.
+    ///       This may cause issues when spawning a service in an already running theater.
+    ///       Actually i never triggered the issue.
+    ///       I suspect that the code after the actual tokio::spawn() of the service task is always executed
+    ///       before the actual task for because of tokio internals but nothing guarantes the behavior.
     fn is_ready(&self) -> impl Future<Output = bool> + Send + 'static {
         self.global.is_ready()
     }

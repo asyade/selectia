@@ -8,10 +8,9 @@ pub struct ServiceATask {
 #[derive(Debug, Clone, Task)]
 pub struct ServiceAEvent {}
 
-
 #[singleton_service(ServiceA)]
 pub async fn service_a(
-    ctx: ServiceContext,
+    _ctx: ServiceContext,
     mut rx: ServiceReceiver<ServiceATask>,
     dispatcher: EventDispatcher<ServiceAEvent>,
     params: String,
@@ -22,7 +21,6 @@ pub async fn service_a(
     msg.unwrap().callback.resolve(()).await.unwrap();
     Ok(())
 }
-
 
 #[tokio::test]
 async fn basic_system() {
@@ -38,15 +36,30 @@ async fn basic_system() {
     ServiceA::spawn(&*ctx, "hello".to_string()).await.unwrap();
 
     ctx.ready().await;
-    let svg = ctx
-        .get_singleton_address::<ServiceA, _>()
-        .await
-        .unwrap();
+    let svg = ctx.get_singleton_address::<ServiceA, _>().await.unwrap();
 
     let (callback, recv) = TaskCallback::new();
     svg.send(ServiceATask { callback }).await.unwrap();
     let _ = recv.wait().await;
 }
 
+#[tokio::test]
+async fn test_running_system() {
+    tracing_subscriber::fmt()
+        .with_env_filter("trace")
+        .pretty()
+        .with_file(true)
+        .fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
+        .init();
 
-//TODO: test launching a service when the context is ready (spoiler alert: it's not working)
+    let ctx = OwnedTheaterContext::new().await;
+    ctx.ready().await;
+
+    ServiceA::spawn(&*ctx, "hello".to_string()).await.unwrap();
+
+    let svg = ctx.get_singleton_address::<ServiceA, _>().await.unwrap();
+    let (callback, recv) = TaskCallback::new();
+    svg.send(ServiceATask { callback }).await.unwrap();
+    let _ = recv.wait().await;
+}
+
