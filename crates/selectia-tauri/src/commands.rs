@@ -15,10 +15,8 @@ use crate::prelude::*;
 #[tauri::command]
 #[instrument(skip(app))]
 pub async fn interactive_list_create_context<'a>(app: AppArg<'a>) -> AppResult<String> {
-    let context: InteractiveListContext =
-        InteractiveListContext::new(app.read().await.clone()).await;
-    let lock = app.read().await.interactive_list_context.clone();
-    let id = lock.create_context(context).await;
+    let context: InteractiveListContext = InteractiveListContext::new(&*app).await;
+    let id = app.interactive_list_context.create_context(context).await;
     info!(
         context_id = id.to_string(),
         "Created interactive list context"
@@ -33,8 +31,8 @@ pub async fn interactive_list_delete_context<'a>(
     app: AppArg<'a>,
 ) -> AppResult<()> {
     info!(context_id = context_id, "Deleting interactive list context");
-    let lock = app.read().await.interactive_list_context.clone();
-    lock.delete_context(ContextId::try_from(context_id)?)
+    app.interactive_list_context
+        .delete_context(ContextId::try_from(context_id)?)
         .await?;
     Ok(())
 }
@@ -47,8 +45,8 @@ pub async fn interactive_list_get_tag_creation_suggestions<'a>(
     input: String,
     app: AppArg<'a>,
 ) -> AppResult<Vec<String>> {
-    let lock = app.read().await.interactive_list_context.clone();
-    let res = lock
+    let res = app
+        .interactive_list_context
         .get_context(ContextId::try_from(context_id)?)
         .await?
         .get_tag_creation_suggestions(tag_name_id, input)
@@ -65,14 +63,13 @@ pub async fn interactive_list_create_tag<'a>(
     value: String,
     app: AppArg<'a>,
 ) -> AppResult<()> {
-    let entry = {
-        let lock = app.read().await.interactive_list_context.clone();
+    let _entry = {
+        let lock = app.interactive_list_context.clone();
         lock.get_context(ContextId::try_from(context_id)?)
             .await?
             .create_tag(metadata_id, name_id, value)
             .await?
     };
-    let handle = app.read().await;
     // handle.emit(EntryChangedEvent {
     //     entry: entry.into(),
     // })?;
@@ -87,15 +84,14 @@ pub async fn get_interactive_list_context_entries<'a>(
     filter: EntryViewFilter,
     app: AppArg<'a>,
 ) -> AppResult<Vec<EntryView>> {
-    let lock = app.read().await.interactive_list_context.clone();
-    let context = lock.get_context(ContextId::try_from(context_id)?).await?;
+    let context = app.interactive_list_context.get_context(ContextId::try_from(context_id)?).await?;
     let entries = context.get_entries(filter).await?;
     Ok(entries.into_iter().map(EntryView::from).collect())
 }
 
 #[tauri::command]
 pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<String> {
-    let file_loader = app.read().await.context.get_service::<FileLoader>().await?;
+    let file_loader = app.context.get_service::<FileLoader>().await?;
 
     LoadDirectory::new(file_loader.clone(), PathBuf::from(directory))?
         .load()
@@ -106,8 +102,6 @@ pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<
 #[tauri::command]
 pub async fn get_tag_names<'a>(app: AppArg<'a>) -> AppResult<Vec<TagName>> {
     let tags = app
-        .read()
-        .await
         .context
         .get_service::<Database>()
         .await?
@@ -119,8 +113,6 @@ pub async fn get_tag_names<'a>(app: AppArg<'a>) -> AppResult<Vec<TagName>> {
 #[tauri::command]
 pub async fn get_tags_by_name<'a>(tag_name: String, app: AppArg<'a>) -> AppResult<Vec<TagView>> {
     let tags = app
-        .read()
-        .await
         .context
         .get_service::<Database>()
         .await?
@@ -132,8 +124,6 @@ pub async fn get_tags_by_name<'a>(tag_name: String, app: AppArg<'a>) -> AppResul
 #[tauri::command]
 pub async fn get_worker_queue_tasks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::WorkerQueueTask>> {
     let all_tasks = app
-        .read()
-        .await
         .context
         .get_service::<Database>()
         .await?
@@ -154,8 +144,6 @@ pub async fn get_worker_queue_task<'a>(
     app: AppArg<'a>,
 ) -> AppResult<dto::WorkerQueueTask> {
     let task = app
-        .read()
-        .await
         .context
         .get_service::<Database>()
         .await?
@@ -170,9 +158,7 @@ pub async fn get_worker_queue_task<'a>(
 #[tauri::command]
 pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
     let (callback, receiver) = TaskCallback::new();
-    app.read()
-        .await
-        .context
+    app.context
         .get_service::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::CreateDeck { callback })
@@ -183,9 +169,7 @@ pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
 #[tauri::command]
 pub async fn get_audio_decks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::DeckView>> {
     let (callback, receiver) = TaskCallback::new();
-    app.read()
-        .await
-        .context
+    app.context
         .get_service::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::GetDecks { callback })
@@ -213,9 +197,7 @@ pub async fn load_audio_track_from_metadata<'a>(
     metadata_id: i64,
     app: AppArg<'a>,
 ) -> AppResult<()> {
-    app.read()
-        .await
-        .context
+    app.context
         .get_service::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::LoadTrack {
@@ -232,9 +214,7 @@ pub async fn load_audio_track_from_variation<'a>(
     file_variation_id: i64,
     app: AppArg<'a>,
 ) -> AppResult<()> {
-    app.read()
-        .await
-        .context
+    app.context
         .get_service::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::LoadTrack {
@@ -268,9 +248,7 @@ pub async fn set_deck_file_status<'a>(
             return Err(eyre::eyre!("Invalid deck file status").into());
         }
     };
-    app.read()
-        .await
-        .context
+    app.context
         .get_service::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::SetDeckFileStatus {
@@ -287,9 +265,7 @@ pub async fn set_deck_file_status<'a>(
 #[tauri::command]
 pub async fn extract_stems<'a>(metadata_id: i64, app: AppArg<'a>) -> AppResult<()> {
     let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });
-    app.read()
-        .await
-        .context
+    app.context
         .get_service::<Worker>()
         .await?
         .send(WorkerTask::Schedule(task))
@@ -302,7 +278,7 @@ pub async fn get_file_variations_for_metadata<'a>(
     metadata_id: i64,
     app: AppArg<'a>,
 ) -> AppResult<Vec<dto::FileVariation>> {
-    let database = app.read().await.context.get_service::<Database>().await?;
+    let database = app.context.get_service::<Database>().await?;
     let file = database.get_file_from_metadata_id(metadata_id).await?;
     let variations = database.get_file_variations(file.id).await?;
     Ok(variations

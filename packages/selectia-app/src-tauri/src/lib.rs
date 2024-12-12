@@ -2,19 +2,16 @@
 #![allow(unused_imports)]
 
 use selectia_tauri::prelude::*;
-use selectia_tauri::{
-    app::{App, AppState},
-    commands::*,
-};
-use tauri::Manager;
+use selectia_tauri::{app::App, commands::*};
 use std::clone;
 use std::sync::Arc;
+use tauri::Manager;
 use tokio::sync::RwLock;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
-    let app_state = AppState::new(App::new().await);
+    let app_state = App::new().await;
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -46,10 +43,9 @@ pub async fn run() {
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle().clone();
-    let app_state = app.state::<AppState>().0.clone();
+    let app_state = {&*app.state::<App>()}.clone();
     // @TODO: **Important** there is race condition here, nothing protect the app to be used during background task execution causing crash if the handle is unwraped which is the case in the `App::handle()` function
     tokio::spawn(async move {
-        let mut app_state = app_state.write().await;
         app_state.setup(handle).await.expect("Failed to setup app");
     });
     Ok(())

@@ -38,7 +38,7 @@ struct OnesetGroup {
 }
 
 impl BpmAnalyser {
-    pub fn new(options: BpmAnalyserOptions, mut onesets: Vec<AudioBeatOneset>) -> Self {
+    pub fn new(options: BpmAnalyserOptions, onesets: Vec<AudioBeatOneset>) -> Self {
         Self { options, onesets }
     }
 
@@ -90,7 +90,6 @@ impl BpmAnalyser {
                 .push(oneset);
         }
 
-        let keys = grouped_onesets.keys().cloned().collect::<Vec<_>>();
         let regions = grouped_onesets
             .into_iter()
             .map(|(_bpm, onesets)| {

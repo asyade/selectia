@@ -12,7 +12,7 @@ use state_machine::StateMachineEvent;
 use tauri::{AppHandle, Emitter, State};
 use theater::{
     context::OwnedTheaterContext,
-    service::{async_channel_iterator, channel_iterator},
+    dispatcher::{async_channel_iterator, channel_iterator},
 };
 use tokio::sync::RwLockWriteGuard;
 use worker::{
@@ -30,9 +30,9 @@ pub struct App {
     pub(crate) interactive_list_context: ContextProvider<InteractiveListContext>,
 }
 
-pub struct AppState(pub Arc<RwLock<App>>);
 
-pub type AppArg<'a> = State<'a, AppState>;
+pub type AppArg<'a> = State<'a, App>;
+
 
 impl App {
     pub async fn new() -> Self {
@@ -41,7 +41,7 @@ impl App {
         let settings = Settings::load().await.expect("Failed to load settings");
 
         context
-            .register_service(
+            .register_singleton(
                 Database::new(&settings.database_path)
                     .await
                     .expect("Failed to initialize database"),
@@ -61,8 +61,8 @@ impl App {
     }
 
     /// Called once tauri is ready this function will create required binding betwen the global Theater and the tauri runtime.
-    pub async fn setup(&mut self, handle: AppHandle) -> eyre::Result<()> {
-        self.context.register_service(handle.clone());
+    pub async fn setup(&self, handle: AppHandle) -> eyre::Result<()> {
+        self.context.register_singleton(handle.clone()).await;
         let ui_dispatcher = handle.clone();
         self.context
             .get_service::<Worker>()
@@ -144,37 +144,5 @@ impl App {
             .send(WorkerTask::Schedule(task))
             .await?;
         Ok(())
-    }
-}
-
-impl AppState {
-    pub fn new(app: App) -> Self {
-        AppState(Arc::new(RwLock::new(app)))
-    }
-}
-
-impl AsRef<Arc<RwLock<App>>> for AppState {
-    fn as_ref(&self) -> &Arc<RwLock<App>> {
-        &self.0
-    }
-}
-
-impl AsMut<Arc<RwLock<App>>> for AppState {
-    fn as_mut(&mut self) -> &mut Arc<RwLock<App>> {
-        &mut self.0
-    }
-}
-
-impl Deref for AppState {
-    type Target = Arc<RwLock<App>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for AppState {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }

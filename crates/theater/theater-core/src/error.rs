@@ -2,6 +2,8 @@
 use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum TheaterError {
+    #[error("The requested service is already registered")]
+    ServiceAlreadyRegistered,
     #[error("The requested service is not registered")]
     ServiceNotRegistered,
     #[error("The requested service exist but does not match the requested type")]

@@ -4,7 +4,6 @@ use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct InteractiveListContext {
-    pub app: App,
     database: Database,
     cache: Arc<RwLock<Cache>>,
 }
@@ -107,10 +106,9 @@ impl InteractiveListContext {
 }
 
 impl InteractiveListContext {
-    pub async fn new(app: App) -> Self {
+    pub async fn new(app: &App) -> Self {
         let database = app.context.get_service::<Database>().await.expect("Database service");
         Self {
-            app,
             database,
             cache: Arc::new(RwLock::new(Cache::new())),
         }

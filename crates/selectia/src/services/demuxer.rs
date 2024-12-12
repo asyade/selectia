@@ -1,7 +1,19 @@
+use std::ops::Deref;
+
 use demucs::{backend::DemuxResult, Demucs};
 
 use crate::prelude::*;
-pub type Demuxer = AddressableServiceWithDispatcher<DemuxerTask, DemuxerEvent>;
+
+pub struct DemuxerSingleton {
+    service: AddressableServiceWithDispatcher<DemuxerTask, DemuxerEvent>,
+}
+
+impl Deref for DemuxerSingleton {
+    type Target = AddressableServiceWithDispatcher<DemuxerTask, DemuxerEvent>;
+    fn deref(&self) -> &Self::Target {
+        &self.service
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum DemuxerTask {
@@ -50,10 +62,11 @@ impl PartialEq for DemuxerStatus {
     }
 }
 
-pub async fn demuxer(ctx: TheaterContext, data_path: PathBuf) -> Demuxer {
-    AddressableServiceWithDispatcher::new(ctx, move |ctx, receiver, sender, dispatcher| {
+pub async fn demuxer(ctx: TheaterContext, data_path: PathBuf) -> DemuxerSingleton {
+    let service = AddressableServiceWithDispatcher::new(ctx, move |ctx, receiver, sender, dispatcher| {
         demuxer_task(data_path.clone(), receiver, sender, dispatcher)
-    }).await
+    }).await;
+    DemuxerSingleton { service }
 }
 
 async fn demuxer_task(

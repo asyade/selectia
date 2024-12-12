@@ -115,7 +115,7 @@ impl PlayerDeck {
         };
 
         let loaded_file = DeckFile {
-            id: (self.id, 0),
+            id: (self.id, self.last_file_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1),
             path: path.as_ref().to_path_buf(),
             status: Arc::new(RwLock::new(DeckFileStatus::Loading { progress: 0 })),
             updated: Arc::new(AtomicBool::new(false)),

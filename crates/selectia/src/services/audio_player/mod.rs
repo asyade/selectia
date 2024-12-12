@@ -297,12 +297,6 @@ impl DeckMixer {
         deck.update_status(f).await
     }
 
-    async fn set_deck_file_status(&self, deck_id: u32, status: DeckFileStatus) -> Result<()> {
-        let deck = self.get_deck(deck_id).await?;
-        deck.set_status(status).await?;
-        Ok(())
-    }
-
     async fn get_all_decks(&self) -> Result<BTreeMap<u32, DeckSnapshot>> {
         let decks = self.decks.read().await.clone();
         let mut result = BTreeMap::new();

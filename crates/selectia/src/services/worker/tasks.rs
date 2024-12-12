@@ -140,7 +140,7 @@ impl FileAnalysisTask {
         let drum_stem = demux_result.get_stem(DemuxResult::DRUMS).ok_or(AudioFileError::AudioSeparationFailed)?;
         let drum_file_path = PathBuf::from(drum_stem.path.as_str());
 
-        let bpm_analysis_result = tokio::task::spawn_blocking(move || {
+        let _bpm_analysis_result = tokio::task::spawn_blocking(move || {
             let wave = EncodedAudioFile::from_file(drum_file_path)
                 .and_then(|f| f.read_mono_wave_until(|_w| Ok(true)))?;
             let mut wave = wave.filter(
