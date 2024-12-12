@@ -17,9 +17,7 @@ use symphonia::core::meta;
 mod backend;
 mod deck;
 
-pub type AudioPlayerService = AddressableServiceWithDispatcher<AudioPlayerTask, AudioPlayerEvent>;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Task)]
 pub enum AudioPlayerTask {
     CreateDeck {
         callback: TaskCallback<u32>,
@@ -45,7 +43,7 @@ pub enum TrackTarget {
     FileVariation { file_variation_id: i64 },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Task)]
 pub enum AudioPlayerEvent {
     DeckCreated {
         id: u32,
@@ -131,19 +129,18 @@ pub enum SamplesSource {
     File(DeckFile),
 }
 
-pub async fn audio_player(ctx: TheaterContext) -> AudioPlayerService {
-    AddressableServiceWithDispatcher::new(
-        ctx,
-        move |ctx, mut receiver, _sender, dispatcher| async move {
-            let database = ctx.get_service::<Database>().await?;
-            AudioPlayer::new(database, dispatcher)
-                .await
-                .expect("Failed to create audio player")
-                .handle(&mut receiver)
-                .await
-        },
-    )
-    .await
+#[singleton_service(AudioPlayerService)]
+pub async fn audio_player(
+    ctx: ServiceContext,
+    mut rx: ServiceReceiver<AudioPlayerTask>,
+    dispatcher: EventDispatcher<AudioPlayerEvent>,
+) -> Result<()> {
+    let database = ctx.get_singleton::<Database>().await?;
+    AudioPlayer::new(database, dispatcher)
+        .await
+        .expect("Failed to create audio player")
+        .handle(&mut rx)
+        .await
 }
 
 impl AudioPlayer {
@@ -341,7 +338,3 @@ impl DeckMixer {
         Ok(result)
     }
 }
-
-impl Task for AudioPlayerTask {}
-
-impl Task for AudioPlayerEvent {}

@@ -1,5 +1,4 @@
 pub mod audio_player;
-pub mod embedding;
 pub mod file_loader;
 pub mod state_machine;
 pub mod worker;

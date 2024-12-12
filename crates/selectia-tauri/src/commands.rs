@@ -84,14 +84,17 @@ pub async fn get_interactive_list_context_entries<'a>(
     filter: EntryViewFilter,
     app: AppArg<'a>,
 ) -> AppResult<Vec<EntryView>> {
-    let context = app.interactive_list_context.get_context(ContextId::try_from(context_id)?).await?;
+    let context = app
+        .interactive_list_context
+        .get_context(ContextId::try_from(context_id)?)
+        .await?;
     let entries = context.get_entries(filter).await?;
     Ok(entries.into_iter().map(EntryView::from).collect())
 }
 
 #[tauri::command]
 pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<String> {
-    let file_loader = app.context.get_service::<FileLoader>().await?;
+    let file_loader = app.context.get_singleton_address::<FileLoader>().await?;
 
     LoadDirectory::new(file_loader.clone(), PathBuf::from(directory))?
         .load()
@@ -103,7 +106,7 @@ pub async fn import_folder<'a>(directory: String, app: AppArg<'a>) -> AppResult<
 pub async fn get_tag_names<'a>(app: AppArg<'a>) -> AppResult<Vec<TagName>> {
     let tags = app
         .context
-        .get_service::<Database>()
+        .get_singleton::<Database>()
         .await?
         .get_tag_names()
         .await?;
@@ -114,7 +117,7 @@ pub async fn get_tag_names<'a>(app: AppArg<'a>) -> AppResult<Vec<TagName>> {
 pub async fn get_tags_by_name<'a>(tag_name: String, app: AppArg<'a>) -> AppResult<Vec<TagView>> {
     let tags = app
         .context
-        .get_service::<Database>()
+        .get_singleton::<Database>()
         .await?
         .get_tags_by_name(&tag_name)
         .await?;
@@ -125,7 +128,7 @@ pub async fn get_tags_by_name<'a>(tag_name: String, app: AppArg<'a>) -> AppResul
 pub async fn get_worker_queue_tasks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::WorkerQueueTask>> {
     let all_tasks = app
         .context
-        .get_service::<Database>()
+        .get_singleton::<Database>()
         .await?
         .get_tasks()
         .await?;
@@ -145,7 +148,7 @@ pub async fn get_worker_queue_task<'a>(
 ) -> AppResult<dto::WorkerQueueTask> {
     let task = app
         .context
-        .get_service::<Database>()
+        .get_singleton::<Database>()
         .await?
         .get_task(task_id)
         .await?;
@@ -159,7 +162,7 @@ pub async fn get_worker_queue_task<'a>(
 pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
     let (callback, receiver) = TaskCallback::new();
     app.context
-        .get_service::<AudioPlayerService>()
+        .get_singleton_address::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::CreateDeck { callback })
         .await?;
@@ -170,7 +173,7 @@ pub async fn create_audio_deck<'a>(app: AppArg<'a>) -> AppResult<u32> {
 pub async fn get_audio_decks<'a>(app: AppArg<'a>) -> AppResult<Vec<dto::DeckView>> {
     let (callback, receiver) = TaskCallback::new();
     app.context
-        .get_service::<AudioPlayerService>()
+        .get_singleton_address::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::GetDecks { callback })
         .await?;
@@ -198,7 +201,7 @@ pub async fn load_audio_track_from_metadata<'a>(
     app: AppArg<'a>,
 ) -> AppResult<()> {
     app.context
-        .get_service::<AudioPlayerService>()
+        .get_singleton_address::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::LoadTrack {
             deck_id,
@@ -215,7 +218,7 @@ pub async fn load_audio_track_from_variation<'a>(
     app: AppArg<'a>,
 ) -> AppResult<()> {
     app.context
-        .get_service::<AudioPlayerService>()
+        .get_singleton_address::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::LoadTrack {
             deck_id,
@@ -249,7 +252,7 @@ pub async fn set_deck_file_status<'a>(
         }
     };
     app.context
-        .get_service::<AudioPlayerService>()
+        .get_singleton_address::<AudioPlayerService>()
         .await?
         .send(AudioPlayerTask::SetDeckFileStatus {
             deck_id,
@@ -266,7 +269,7 @@ pub async fn set_deck_file_status<'a>(
 pub async fn extract_stems<'a>(metadata_id: i64, app: AppArg<'a>) -> AppResult<()> {
     let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });
     app.context
-        .get_service::<Worker>()
+        .get_singleton_address::<Worker>()
         .await?
         .send(WorkerTask::Schedule(task))
         .await?;
@@ -278,7 +281,7 @@ pub async fn get_file_variations_for_metadata<'a>(
     metadata_id: i64,
     app: AppArg<'a>,
 ) -> AppResult<Vec<dto::FileVariation>> {
-    let database = app.context.get_service::<Database>().await?;
+    let database = app.context.get_singleton::<Database>().await?;
     let file = database.get_file_from_metadata_id(metadata_id).await?;
     let variations = database.get_file_variations(file.id).await?;
     Ok(variations

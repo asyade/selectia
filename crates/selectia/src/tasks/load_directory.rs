@@ -1,12 +1,12 @@
 use crate::prelude::*;
 
 pub struct LoadDirectory {
-    file_loader: FileLoader,
+    file_loader: AddressableService<FileLoaderTask>,
     directory: PathBuf,
 }
 
 impl LoadDirectory {
-    pub fn new(file_loader: FileLoader, directory: PathBuf) -> Result<Self> {
+    pub fn new(file_loader: AddressableService<FileLoaderTask>, directory: PathBuf) -> Result<Self> {
         if !directory.exists() {
             return Err(eyre!("Directory does not exist"));
         }

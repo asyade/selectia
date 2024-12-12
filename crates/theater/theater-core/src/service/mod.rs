@@ -6,11 +6,11 @@ pub use addresable_service::*;
 pub type ServiceSender<T> = sync::mpsc::Sender<T>;
 pub type ServiceReceiver<T> = sync::mpsc::Receiver<T>;
 
-pub trait Service<T> {
-    
+pub trait Service {
+    type Task: Task;
 
-    fn blocking_send(&self, message: T) -> TheaterResult<()>;
-    fn send(&self, message: T) -> impl Future<Output = TheaterResult<()>> + Send;
+    fn blocking_send(&self, message: Self::Task) -> TheaterResult<()>;
+    fn send(&self, message: Self::Task) -> impl Future<Output = TheaterResult<()>> + Send;
 
     fn spawn_entrypoint<
         Fut: Future<Output = Result<(), E>> + Send + 'static,
@@ -40,12 +40,12 @@ pub trait Event: Task + Clone + 'static {}
 impl<T: Task + Clone + 'static> Event for T {}
 
 /// A wraper around `EventDispatcher` that allows registration as a singleton and identification based on the service/event type.
-pub struct SingletonServiceDispatcher<T: Task, R: Event, S: SingletonService<T>> {
+pub struct SingletonServiceDispatcher<T: Task, R: Event, S: SingletonService<Task = T>> {
     dispatcher: EventDispatcher<R>,
     _phantom: PhantomData<(S, T)>,
 }
 
-impl<T: Task, R: Event, S: SingletonService<T>> Into<EventDispatcher<R>>
+impl<T: Task, R: Event, S: SingletonService<Task = T>> Into<EventDispatcher<R>>
     for SingletonServiceDispatcher<T, R, S>
 {
     fn into(self) -> EventDispatcher<R> {
@@ -53,7 +53,7 @@ impl<T: Task, R: Event, S: SingletonService<T>> Into<EventDispatcher<R>>
     }
 }
 
-impl<T: Task, R: Event, S: SingletonService<T>> SingletonServiceDispatcher<T, R, S> {
+impl<T: Task, R: Event, S: SingletonService<Task = T>> SingletonServiceDispatcher<T, R, S> {
     pub fn new() -> Self {
         Self {
             dispatcher: EventDispatcher::new(),
@@ -62,7 +62,7 @@ impl<T: Task, R: Event, S: SingletonService<T>> SingletonServiceDispatcher<T, R,
     }
 }
 
-impl<T: Task, R: Event, S: SingletonService<T>> Clone for SingletonServiceDispatcher<T, R, S> {
+impl<T: Task, R: Event, S: SingletonService<Task = T>> Clone for SingletonServiceDispatcher<T, R, S> {
     fn clone(&self) -> Self {
         Self {
             dispatcher: self.dispatcher.clone(),
@@ -71,7 +71,7 @@ impl<T: Task, R: Event, S: SingletonService<T>> Clone for SingletonServiceDispat
     }
 }
 
-impl<T: Task, R: Event, S: SingletonService<T>> Deref for SingletonServiceDispatcher<T, R, S> {
+impl<T: Task, R: Event, S: SingletonService<Task = T>> Deref for SingletonServiceDispatcher<T, R, S> {
     type Target = EventDispatcher<R>;
 
     fn deref(&self) -> &Self::Target {
@@ -90,7 +90,9 @@ mod addresable_service {
         pub(super) sender: sync::mpsc::Sender<T>,
     }
 
-    impl<T: Task> Service<T> for AddressableService<T> {
+    impl<T: Task> Service for AddressableService<T> {
+        type Task = T;
+
         async fn send(&self, message: T) -> TheaterResult<()> {
             self.sender
                 .send(message)

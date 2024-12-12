@@ -107,7 +107,7 @@ impl InteractiveListContext {
 
 impl InteractiveListContext {
     pub async fn new(app: &App) -> Self {
-        let database = app.context.get_service::<Database>().await.expect("Database service");
+        let database = app.context.get_singleton::<Database>().await.expect("Database singleton");
         Self {
             database,
             cache: Arc::new(RwLock::new(Cache::new())),

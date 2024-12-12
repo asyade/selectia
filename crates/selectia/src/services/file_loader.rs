@@ -2,26 +2,18 @@ use crate::prelude::*;
 
 const MAX_CONCURRENT_LOADS: usize = 4;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Task)]
 pub enum FileLoaderTask {
     LoadFile(PathBuf),
 }
 
-pub type FileLoader = AddressableService<FileLoaderTask>;
-
-pub async fn file_loader(ctx: TheaterContext) -> FileLoader {
-    AddressableService::new(ctx, |ctx, receiver, _| async move {
-        let state_machine = ctx.get_service::<StateMachine>().await?;
-        file_loader_task(state_machine, receiver).await
-    })
-    .await
-}
-
-async fn file_loader_task(
-    state_machine: StateMachine,
-    receiver: sync::mpsc::Receiver<FileLoaderTask>,
+#[singleton_service(FileLoader)]
+pub async fn file_loader(
+    ctx: ServiceContext,
+    mut rx: ServiceReceiver<FileLoaderTask>,
 ) -> Result<()> {
-    let stream = futures::stream::unfold(receiver, |mut recv| async move {
+    let state_machine = ctx.get_singleton_address::<StateMachine>().await?;
+    let stream = futures::stream::unfold(rx, |mut recv| async move {
         recv.recv().await.map(|task| (task, recv))
     })
     .map(|file| async {
@@ -58,8 +50,6 @@ async fn file_loader_task(
     }
     Ok(())
 }
-
-impl Task for FileLoaderTask {}
 
 mod loader {
     use base64ct::{Base64, Encoding};

@@ -9,7 +9,7 @@ use crate::prelude::*;
 /// Helper macro to generate required struct and impl for a Service
 #[proc_macro_error]
 #[proc_macro_derive(Task)]
-pub fn my_derive(input: TokenStream) -> TokenStream {
+pub fn task_derive(input: TokenStream) -> TokenStream {
     let input = TokenStream2::from(input);
     let Ok(ast) = syn::parse2::<DeriveInput>(input.clone()) else {
         abort!(input, "Failed to parse input");
@@ -206,7 +206,8 @@ pub fn singleton_service(input: TokenStream, item: TokenStream) -> TokenStream {
             service: theater::service::AddressableService<#task_type_name>,
         }
 
-        impl SingletonService<#task_type_name> for #service_name {
+        impl SingletonService for #service_name {
+            type Task = #task_type_name;
             fn address(&self) -> AddressableService<#task_type_name> {
                 self.service.clone()
             }

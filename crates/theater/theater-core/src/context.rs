@@ -26,10 +26,14 @@ pub trait ServiceHostContext: Clone + Send + Sync {
         f: F,
     ) -> impl Future<Output = TheaterResult<R>>;
 
-    fn get_singleton_address<Svc: Any + Send + Sync + SingletonService<T>, T: Task>(
+    fn get_singleton_address<Svc: Any + Send + Sync + SingletonService>(
         &self,
-    ) -> impl Future<Output = TheaterResult<AddressableService<T>>> {
+    ) -> impl Future<Output = TheaterResult<AddressableService<Svc::Task>>> {
         self.map_singleton::<Svc, _, _>(|svc| svc.address())
+    }
+
+    fn get_singleton_dispatcher<Svc: Any + Send + Sync + SingletonService, R: Event>(&self) -> impl Future<Output = TheaterResult<SingletonServiceDispatcher<Svc::Task, R, Svc>>> {
+        self.get_singleton::<SingletonServiceDispatcher<Svc::Task, R, Svc>>()
     }
 }
 
@@ -37,8 +41,9 @@ pub trait GlobalTheaterContext {
     fn as_global(&self) -> &TheaterContext;
 }
 
-pub trait SingletonService<T: Task> {
-    fn address(&self) -> AddressableService<T>;
+pub trait SingletonService {
+    type Task: Task + Send + Sync;
+    fn address(&self) -> AddressableService<Self::Task>;
 }
 
 #[derive(Clone)]

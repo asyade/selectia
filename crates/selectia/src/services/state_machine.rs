@@ -2,21 +2,13 @@ use models::File;
 
 use crate::prelude::*;
 
-pub type StateMachine = AddressableServiceWithDispatcher<StateMachineTask, StateMachineEvent>;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Task)]
 pub enum StateMachineEvent {
-    FileIngested {
-        file: File,
-        new: bool,
-    },
-}
-
-impl Task for StateMachineEvent {
+    FileIngested { file: File, new: bool },
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Task)]
 pub struct StateMachineTask {
     owner: TaskOwner,
     payload: StateMachineTaskPayload,
@@ -45,35 +37,20 @@ pub struct SetTagTask {
     pub callback: Arc<Mutex<Option<Box<dyn FnOnce() -> Result<()> + Send + Sync + 'static>>>>,
 }
 
-impl std::fmt::Debug for SetTagTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "SetTagTask {{ name: {:?}, value: {:?}, metadata_id: {:?} }}",
-            self.name, self.value, self.metadata_id
-        )
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct IngestFileTask {
     pub path: PathBuf,
     pub hash: String,
 }
 
-pub async fn state_machine(ctx: TheaterContext) -> StateMachine {
-    AddressableServiceWithDispatcher::new(ctx, move |ctx, receiver, _sender, dispatcher| async move{
-        let database = ctx.get_service::<Database>().await?;
-        state_machine_task(database, receiver, dispatcher).await
-    }).await
-}
-
-async fn state_machine_task(
-    database: Database,
-    mut receiver: sync::mpsc::Receiver<StateMachineTask>,
+#[singleton_service(StateMachine)]
+pub async fn state_machine(
+    ctx: ServiceContext,
+    mut rx: ServiceReceiver<StateMachineTask>,
     dispatcher: EventDispatcher<StateMachineEvent>,
 ) -> Result<()> {
-    while let Some(task) = receiver.recv().await {
+    let database = ctx.get_singleton::<Database>().await?;
+    while let Some(task) = rx.recv().await {
         match handle_task(database.clone(), task, dispatcher.clone()).await {
             Ok(true) => (),
             Ok(false) => break,
@@ -115,7 +92,7 @@ async fn handle_task(
             let _tag_id = database
                 .set_metadata_tag_by_tag_name_id(metadata.id, TagName::FILE_NAME_ID, file_name)
                 .await?;
-            
+
             dispatcher
                 .dispatch(StateMachineEvent::FileIngested { file, new: created })
                 .await?;
@@ -132,9 +109,6 @@ async fn handle_task(
             Ok(true)
         }
     }
-}
-
-impl Task for StateMachineTask {
 }
 
 impl StateMachineTask {
@@ -157,7 +131,12 @@ impl StateMachineTask {
         }
     }
 
-    pub fn set_tag_with_callback<F>(name: String, value: String, metadata_id: Option<i64>, callback: F) -> Self
+    pub fn set_tag_with_callback<F>(
+        name: String,
+        value: String,
+        metadata_id: Option<i64>,
+        callback: F,
+    ) -> Self
     where
         F: FnOnce() -> Result<()> + Send + Sync + 'static,
     {
@@ -170,5 +149,15 @@ impl StateMachineTask {
                 callback: Arc::new(Mutex::new(Some(Box::new(callback)))),
             }),
         }
+    }
+}
+
+impl std::fmt::Debug for SetTagTask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "SetTagTask {{ name: {:?}, value: {:?}, metadata_id: {:?} }}",
+            self.name, self.value, self.metadata_id
+        )
     }
 }

@@ -3,11 +3,11 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-
+use crate::prelude::*;
 use crate::{analyser::bpm_analyser::{BpmAnalyser, BpmAnalyserOptions}, prelude::*};
 use chrono::{DateTime, Utc};
 use demucs::backend::DemuxResult;
-use demuxer::{Demuxer, DemuxerTask};
+use demuxer::{DemuxerSingleton, DemuxerTask};
 use eyre::{bail, OptionExt};
 use models::{FileVariationMetadata, Task};
 use selectia_audio_file::{
@@ -49,7 +49,7 @@ pub enum TaskPayload {
 }
 
 pub struct TaskContext {
-    pub demuxer: Demuxer,
+    pub demuxer: AddressableService<DemuxerTask>,
     pub database: Database,
 }
 

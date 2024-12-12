@@ -4,7 +4,7 @@ use std::{
 };
 
 use audio_player::{audio_player, AudioPlayer, AudioPlayerEvent, AudioPlayerService};
-use demuxer::{Demuxer, DemuxerEvent, DemuxerStatus, DemuxerTask};
+use demuxer::{DemuxerEvent, DemuxerSingleton, DemuxerStatus, DemuxerTask};
 use dto::Events;
 use interactive_list_context::InteractiveListContext;
 use selectia::database::models::Task;
@@ -30,9 +30,7 @@ pub struct App {
     pub(crate) interactive_list_context: ContextProvider<InteractiveListContext>,
 }
 
-
 pub type AppArg<'a> = State<'a, App>;
-
 
 impl App {
     pub async fn new() -> Self {
@@ -46,13 +44,24 @@ impl App {
                     .await
                     .expect("Failed to initialize database"),
             )
-            .await;
+            .await
+            .expect("Failed to register database singleton");
 
-        audio_player({ &*context }.clone()).await;
-        state_machine({ &*context }.clone()).await;
-        file_loader({ &*context }.clone()).await;
-        demuxer::demuxer({ &*context }.clone(), settings.demuxer_data_path.clone()).await;
-        worker({ &*context }.clone()).await;
+        AudioPlayerService::spawn(&context)
+            .await
+            .expect("Failed to spawn AudioPlayerService");
+        StateMachine::spawn(&context)
+            .await
+            .expect("Failed to spawn StateMachine");
+        FileLoader::spawn(&context)
+            .await
+            .expect("Failed to spawn FileLoader");
+        DemuxerSingleton::spawn(&context, settings.demuxer_data_path.clone())
+            .await
+            .expect("Failed to spawn DemuxerSingleton");
+        Worker::spawn(&context)
+            .await
+            .expect("Failed to spawn Worker");
 
         App {
             context: context,
@@ -62,12 +71,12 @@ impl App {
 
     /// Called once tauri is ready this function will create required binding betwen the global Theater and the tauri runtime.
     pub async fn setup(&self, handle: AppHandle) -> eyre::Result<()> {
-        self.context.register_singleton(handle.clone()).await;
+        self.context.register_singleton(handle.clone()).await.expect("Failed to register app handle");
         let ui_dispatcher = handle.clone();
         self.context
-            .get_service::<Worker>()
+            .get_singleton_dispatcher::<Worker, WorkerEvent>()
             .await?
-            .register_channel(channel_iterator(move |msg| match msg {
+            .register(channel_iterator(move |msg| match msg {
                 WorkerEvent::QueueTaskCreated { id, status } => {
                     let task = dto::WorkerQueueTask {
                         id,
@@ -95,9 +104,9 @@ impl App {
 
         let ui_dispatcher = handle.clone();
         self.context
-            .get_service::<AudioPlayerService>()
+            .get_singleton_dispatcher::<AudioPlayerService, AudioPlayerEvent>()
             .await?
-            .register_channel(channel_iterator(move |msg| match msg {
+            .register(channel_iterator(move |msg| match msg {
                 AudioPlayerEvent::DeckCreated { id } => {
                     let _ = ui_dispatcher.emit_event(dto::AudioDeckCreatedEvent { id });
                 }
@@ -130,19 +139,7 @@ impl App {
                 }
             }))
             .await;
-
-        info!("Setup done, starting scene ...");
         self.context.ready().await;
-        Ok(())
-    }
-
-    pub async fn schedule_file_analysis(&self, metadata_id: i64) -> eyre::Result<()> {
-        let task = TaskPayload::FileAnalysis(FileAnalysisTask { metadata_id });
-        self.context
-            .get_service::<Worker>()
-            .await?
-            .send(WorkerTask::Schedule(task))
-            .await?;
         Ok(())
     }
 }

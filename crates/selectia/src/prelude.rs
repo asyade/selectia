@@ -22,7 +22,6 @@ pub use crate::services::*;
 pub use crate::tasks::load_directory::LoadDirectory;
 pub use crate::services::file_loader::{file_loader, FileLoader, FileLoaderTask};
 pub use crate::services::state_machine::{state_machine, StateMachine, StateMachineTask, IngestFileTask};
-pub use crate::services::embedding::{embedding, Embedding};
 pub use futures::{Stream, StreamExt, FutureExt, Future};
 
 pub use crate::models::{Tag, TagName};

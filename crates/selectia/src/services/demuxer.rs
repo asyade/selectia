@@ -4,18 +4,7 @@ use demucs::{backend::DemuxResult, Demucs};
 
 use crate::prelude::*;
 
-pub struct DemuxerSingleton {
-    service: AddressableServiceWithDispatcher<DemuxerTask, DemuxerEvent>,
-}
-
-impl Deref for DemuxerSingleton {
-    type Target = AddressableServiceWithDispatcher<DemuxerTask, DemuxerEvent>;
-    fn deref(&self) -> &Self::Target {
-        &self.service
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Task)]
 pub enum DemuxerTask {
     Demux {
         input: PathBuf,
@@ -27,7 +16,7 @@ pub enum DemuxerTask {
     },
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Task)]
 pub enum DemuxerEvent {
     StatusUpdate { status: DemuxerStatus },
 }
@@ -62,34 +51,26 @@ impl PartialEq for DemuxerStatus {
     }
 }
 
-pub async fn demuxer(ctx: TheaterContext, data_path: PathBuf) -> DemuxerSingleton {
-    let service = AddressableServiceWithDispatcher::new(ctx, move |ctx, receiver, sender, dispatcher| {
-        demuxer_task(data_path.clone(), receiver, sender, dispatcher)
-    }).await;
-    DemuxerSingleton { service }
-}
-
-async fn demuxer_task(
-    data_path: PathBuf,
-    mut receiver: sync::mpsc::Receiver<DemuxerTask>,
-    sender: sync::mpsc::Sender<DemuxerTask>,
-    dispatcher: EventDispatcher<DemuxerEvent>,
-) -> Result<()> {
+#[singleton_service(DemuxerSingleton)]
+pub async fn demuxer(ctx: ServiceContext, mut rx: ServiceReceiver<DemuxerTask>, dispatcher: EventDispatcher<DemuxerEvent>,  data_path: PathBuf) -> Result<()> {
     let mut current_status = DemuxerStatus::None;
-    sender.send(DemuxerTask::StatusUpdate {
+
+    // Trigger status update to perform first check
+    let introspect_address = ctx.get_singleton_address::<DemuxerSingleton>().await?;
+    introspect_address.send(DemuxerTask::StatusUpdate {
         status: DemuxerStatus::None,
     }).await?;
 
-    while let Some(task) = receiver.recv().await {
+    while let Some(task) = rx.recv().await {
         match task {
             DemuxerTask::StatusUpdate { status } => {
                 current_status = status;
                 if current_status == DemuxerStatus::NotInstalled {
                     info!("Demuxer not installed, installing it ...");
-                    tokio::spawn(install_demuxer(data_path.clone(), sender.clone()));
+                    tokio::spawn(install_demuxer(data_path.clone(), introspect_address.clone()));
                 } else if current_status == DemuxerStatus::None {
                     info!("Demuxer ready, loading it ...");
-                    load_demuxer(data_path.clone(), sender.clone()).await?;
+                    load_demuxer(data_path.clone(), introspect_address.clone()).await?;
                 }
             }
             DemuxerTask::Demux {
@@ -113,7 +94,7 @@ async fn demuxer_task(
     Ok(())
 }
 
-async fn load_demuxer(data_path: PathBuf, sender: sync::mpsc::Sender<DemuxerTask>) -> Result<()> {
+async fn load_demuxer(data_path: PathBuf, sender: AddressableService<DemuxerTask>) -> Result<()> {
     sender
         .send(DemuxerTask::StatusUpdate {
             status: DemuxerStatus::Loading,
@@ -159,7 +140,7 @@ async fn load_demuxer(data_path: PathBuf, sender: sync::mpsc::Sender<DemuxerTask
 
 async fn install_demuxer(
     data_path: PathBuf,
-    sender: sync::mpsc::Sender<DemuxerTask>,
+    sender: AddressableService<DemuxerTask>,
 ) -> Result<()> {
     sender
         .send(DemuxerTask::StatusUpdate {
@@ -195,6 +176,3 @@ async fn install_demuxer(
     }
     Ok(())
 }
-
-impl Task for DemuxerTask {}
-impl Task for DemuxerEvent {}

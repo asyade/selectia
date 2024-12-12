@@ -1,4 +1,4 @@
-use theater::prelude::*;
+use theater::{dispatcher::channel_iterator, prelude::*};
 
 #[derive(Debug, Clone, Task)]
 pub struct ServiceATask {
@@ -36,10 +36,16 @@ async fn basic_system() {
     ServiceA::spawn(&*ctx, "hello".to_string()).await.unwrap();
 
     ctx.ready().await;
-    let svg = ctx.get_singleton_address::<ServiceA, _>().await.unwrap();
+    let svg = ctx.get_singleton_address::<ServiceA>().await.unwrap();
+    let dispatcher = ctx.get_singleton_dispatcher::<ServiceA, ServiceAEvent>().await.unwrap();
+
+    dispatcher.register(channel_iterator(|event|{
+        println!("Received event: {:?}", event);
+    })).await;
 
     let (callback, recv) = TaskCallback::new();
     svg.send(ServiceATask { callback }).await.unwrap();
+
     let _ = recv.wait().await;
 }
 
@@ -56,10 +62,10 @@ async fn test_running_system() {
     ctx.ready().await;
 
     ServiceA::spawn(&*ctx, "hello".to_string()).await.unwrap();
-
-    let svg = ctx.get_singleton_address::<ServiceA, _>().await.unwrap();
+    let svg = ctx.get_singleton_address::<ServiceA>().await.unwrap();
     let (callback, recv) = TaskCallback::new();
     svg.send(ServiceATask { callback }).await.unwrap();
     let _ = recv.wait().await;
 }
 
+//TODO: test launching a service when the context is ready (spoiler alert: it's not working)

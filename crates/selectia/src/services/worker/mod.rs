@@ -1,4 +1,4 @@
-use demuxer::Demuxer;
+use demuxer::DemuxerSingleton;
 use models::Task as TaskModel;
 use tasks::{BackgroundTask, TaskContext, TaskPayload, TaskStatus};
 
@@ -28,24 +28,16 @@ pub enum WorkerEvent {
     },
 }
 
-pub type Worker = AddressableServiceWithDispatcher<WorkerTask, WorkerEvent>;
-
-pub async fn worker(ctx: TheaterContext) -> Worker {
-    AddressableServiceWithDispatcher::new(ctx, |ctx, receiver, sender, dispatcher| async move {
-        let database = ctx.get_service::<Database>().await?;
-        let demuxer = ctx.get_service::<Demuxer>().await?;
-        worker_task(demuxer, database, receiver, sender, dispatcher).await
-    }).await
-}
-
-async fn worker_task(
-    demuxer: Demuxer,
-    database: Database,
-    mut receiver: sync::mpsc::Receiver<WorkerTask>,
-    sender: sync::mpsc::Sender<WorkerTask>,
+#[singleton_service(Worker)]
+pub async fn worker(
+    ctx: ServiceContext,
+    mut rx: ServiceReceiver<WorkerTask>,
     dispatcher: EventDispatcher<WorkerEvent>,
 ) -> Result<()> {
-    let mut pool = WorkerPool::new(DEFAULT_WORKER_POOL_SIZE, sender.clone(), dispatcher.clone());
+    let database = ctx.get_singleton::<Database>().await?;
+    let demuxer = ctx.get_singleton_address::<DemuxerSingleton>().await?;
+    let introspect_address = ctx.get_singleton_address::<Worker>().await?;
+    let mut pool = WorkerPool::new(DEFAULT_WORKER_POOL_SIZE, introspect_address.clone(), dispatcher.clone());
 
     // Sanitize task status to ensure that no task is in processing status due to a crash
     let sanitized = database.sanitize_task_status().await?;
@@ -57,9 +49,9 @@ async fn worker_task(
     }
 
     // Send a poll message to the dispatcher to wake up the main loop and check if there is a task store
-    sender.send(WorkerTask::Poll).await?;
+    introspect_address.send(WorkerTask::Poll).await?;
 
-    while let Some(task) = receiver.recv().await {
+    while let Some(task) = rx.recv().await {
         info!("Worker received task: {:?}", task);
         match task {
             WorkerTask::TaskDone { id, success } => {
@@ -127,7 +119,7 @@ async fn worker_task(
 #[allow(dead_code)]
 struct WorkerPool {
     max_size: usize,
-    notify: sync::mpsc::Sender<WorkerTask>,
+    notify: AddressableService<WorkerTask>,
     dispatcher: EventDispatcher<WorkerEvent>,
     background_handles: HashMap<i64, (tokio::task::JoinHandle<Result<()>>, BackgroundTask)>,
 }
@@ -135,7 +127,7 @@ struct WorkerPool {
 impl WorkerPool {
     pub fn new(
         nbr_worker: usize,
-        notify: sync::mpsc::Sender<WorkerTask>,
+        notify: AddressableService<WorkerTask>,
         dispatcher: EventDispatcher<WorkerEvent>,
     ) -> Self {
         Self {
@@ -176,7 +168,7 @@ impl WorkerPool {
 async fn process_task(
     context: TaskContext,
     task: BackgroundTask,
-    notify: sync::mpsc::Sender<WorkerTask>,
+    notify: AddressableService<WorkerTask>,
 ) -> Result<()> {
     info!("Processing task: {:?}", task);
     if let Err(e) = task.process(context).await {
