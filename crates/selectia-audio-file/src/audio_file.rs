@@ -245,6 +245,15 @@ impl EncodedAudioFile {
 
 impl AudioFilePayload {
 
+    pub fn from_interleaved_samples(sample_rate: f64, channels: u32, samples: Vec<f32>) -> AudioFileResult<Self> {
+        Ok(Self {
+            duration: samples.len() as f64 / channels as f64 / sample_rate as f64,
+            sample_rate,
+            channels,
+            buffer: InterleveadSampleBuffer::from_samples(sample_rate, channels, samples),
+        })
+    }
+
     pub fn generate_preview(&self) -> AudioFileResult<AudioFilePayload> {
         let resampled = self.resample(1000.0)?;
         Ok(resampled)

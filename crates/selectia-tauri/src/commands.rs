@@ -4,7 +4,7 @@ use audio_player::{AudioPlayer, AudioPlayerService, AudioPlayerTask, TrackTarget
 use dto::{EntryChangedEvent, EntryListChangedEvent, TagListChangedEvent};
 use interactive_list_context::InteractiveListContext;
 use selectia::database::views::TagView;
-use tauri::{Emitter, State};
+use tauri::{AppHandle, Emitter, State};
 use worker::{
     tasks::{FileAnalysisTask, StemExtractionTask, TaskPayload, TaskStatus},
     Worker, WorkerTask,
@@ -57,7 +57,7 @@ pub async fn interactive_list_get_tag_creation_suggestions(
 
 #[tauri::command]
 #[instrument(skip(provider))]
-pub async fn interactive_list_create_tag(
+pub async fn interactive_list_create_tag<'a>(
     context_id: String,
     metadata_id: i64,
     name_id: i64,
@@ -69,10 +69,6 @@ pub async fn interactive_list_create_tag(
         .await?
         .create_tag(metadata_id, name_id, value)
         .await?;
-    // handle.emit(EntryChangedEvent {
-    //     entry: entry.into(),
-    // })?;
-    // handle.emit(TagListChangedEvent {})?;
     Ok(())
 }
 

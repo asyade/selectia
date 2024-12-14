@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeckFilePayloadSnapshot, DeckFilePreview, DeckFileStatus } from "../../../selectia-tauri/dto/models";
 import { useDeckPayload, useDeckStatus } from "../../../selectia-tauri/hooks/UseAudioPlayer";
+import { Button } from "../../atoms/Button";
+import { IconZoomIn, IconZoomOut } from "../../atoms/Icon";
+import { set_deck_file_status } from "../../../selectia-tauri";
 
 
 export function TrackView(
@@ -10,30 +13,27 @@ export function TrackView(
         status: DeckFileStatus | null;
     },
 ) {
-    const [payload] = useDeckPayload(props.deckId, props.payload);
-    const [status, setStatus] = useDeckStatus(props.deckId, props.status);
-
     const trackBarRef = useRef<HTMLDivElement>(null);
 
     const [waveformSize, setWaveformSize] = useState<
         { width: number; height: number } | null
     >(null);
 
-    const progress = (payload && status)
-        ? trackProgress(payload, status)
+    const progress = (props.payload && props.status)
+        ? trackProgress(props.payload, props.status)
         : 0;
 
     const handleTrackBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const offsetX = e.pageX - rect.left;
 
-        if (payload) {
+        if (props.payload) {
             const sampleOffset = Math.floor(
                 offsetX / rect.width *
-                    payload.samples_count,
+                    props.payload.samples_count,
             );
             console.log(sampleOffset);
-            setStatus({ kind: "Playing", offset: sampleOffset });
+            set_deck_file_status(props.deckId, { kind: "Playing", offset: sampleOffset });
         }
     };
 
@@ -61,19 +61,21 @@ export function TrackView(
 
 
     const samplesViewMemo = useMemo(() => (
-        waveformSize && status?.kind !== "Loading" && (
+        waveformSize && props.status?.kind !== "Loading" && (
             <SamplesView
-                audioBuffer={payload?.preview ?? null}
+                audioBuffer={props.payload?.preview ?? null}
                 width={waveformSize.width}
                 height={waveformSize.height}
+                bpm={120.0}
+                grid_offset={10}
             />
         ) || <div></div>
-    ), [payload, waveformSize]);
+    ), [props.payload, waveformSize]);
 
     return (
         <div
             ref={trackBarRef}
-            className="relative h-full flex-grow"
+            className="w-full relative flex-grow"
             onClick={(e) => handleTrackBarClick(e)}
         >
             <div className="absolute top-0 left-0">
@@ -92,8 +94,22 @@ export function TrackView(
                 style={{ width: `${progress}%` }}
             >
             </div>
+            <ViewControls />
         </div>
     );
+}
+
+function ViewControls(props: {}) {
+    return (
+        <div className="absolute top-0 left-0 flex flex-row items-start justify-center">
+            <Button onClick={() => {}}>
+                <IconZoomIn />
+            </Button>
+            <Button onClick={() => {}}>
+                <IconZoomOut />
+            </Button>
+        </div>
+    )
 }
 
 function trackProgress(
@@ -115,11 +131,14 @@ function trackProgress(
     audioBuffer: DeckFilePreview | null;
     width: number;
     height: number;
+    bpm: number;
+    grid_offset: number;
 }
 
  function SamplesView(
-    { audioBuffer, width, height }: SamplesViewProps,
+    { audioBuffer, width, height, bpm, grid_offset }: SamplesViewProps,
 ) {
+    console.log("Redrawing samples view");
     const canvasRef = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
         if (!audioBuffer) {
@@ -143,16 +162,19 @@ function trackProgress(
         ctx.beginPath();
         ctx.moveTo(0, height / 2); // Start in the middle
 
-        audioBuffer.samples.forEach((sample, index) => {
+        const samplesPerPixel = Math.min(1, audioBuffer.samples.length / width);
+
+        for (let i = 0; i < audioBuffer.samples.length; i += samplesPerPixel) {
+            const sample = audioBuffer.samples[i];
             const normalized = sample * height / 2;
-            const x = (index / audioBuffer.samples.length) * width;
+            const x = (i / audioBuffer.samples.length) * width;
             const y = (height / 2) - normalized;
             ctx.lineTo(x, y);
-        });
-
+        }
         ctx.strokeStyle = "#7c3aed";
         ctx.lineWidth = 1;
         ctx.stroke();
+
     }, [audioBuffer, width, height]);
 
     return <canvas ref={canvasRef} width={width} height={height} />;

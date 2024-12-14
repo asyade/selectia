@@ -1,9 +1,12 @@
 use crate::{prelude::*, App};
+use dto::{EntryChangedEvent, TagListChangedEvent};
 use selectia::{analyser::entries_analyser::EntriesAnalyser, database};
+use tauri::AppHandle;
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct InteractiveListContext {
+    handle: AppHandle,
     database: Database,
     cache: Arc<RwLock<Cache>>,
 }
@@ -65,10 +68,14 @@ impl InteractiveListContext {
         input: String,
     ) -> eyre::Result<Vec<String>> {
         {
-            info!(tag_name_id, input, "Getting tag creation suggestions (cached)");
+            info!(
+                tag_name_id,
+                input, "Getting tag creation suggestions (cached)"
+            );
             let lock = self.cache.read().await;
             if let Some(entries) = lock.cached_entries() {
-                return Ok(EntriesAnalyser::new(&entries).get_tag_creation_suggestions(tag_name_id, &input)?);
+                return Ok(EntriesAnalyser::new(&entries)
+                    .get_tag_creation_suggestions(tag_name_id, &input)?);
             }
         }
 
@@ -77,7 +84,10 @@ impl InteractiveListContext {
             lock.fill(&self.database).await?;
         }
 
-        info!(tag_name_id, input, "Getting tag creation suggestions (uncached)");
+        info!(
+            tag_name_id,
+            input, "Getting tag creation suggestions (uncached)"
+        );
         let lock = self.cache.read().await;
         let entries = lock.cached_entries().unwrap();
         Ok(EntriesAnalyser::new(&entries).get_tag_creation_suggestions(tag_name_id, &input)?)
@@ -88,27 +98,35 @@ impl InteractiveListContext {
         metadata_id: i64,
         name_id: i64,
         value: String,
-    ) -> eyre::Result<EntryView> {
+    ) -> eyre::Result<()> {
         info!(metadata_id, name_id, value, "Creating tag");
         self.database
             .set_metadata_tag_by_tag_name_id(metadata_id, name_id, value)
             .await?;
-        let entry = self
-            .database
-            .get_entry_by_metadata_id(metadata_id)
-            .await?;
+        let entry = self.database.get_entry_by_metadata_id(metadata_id).await?;
         {
             let mut lock = self.cache.write().await;
             lock.invalidate(&self.database);
         }
-        Ok(entry.into())
+
+        self.handle.emit_event(EntryChangedEvent {
+            entry: entry.into(),
+        })?;
+        self.handle.emit_event(TagListChangedEvent {})?;
+        Ok(())
     }
 }
 
 impl InteractiveListContext {
     pub async fn new(app: &App) -> Self {
-        let database = app.context.get_singleton::<Database>().await.expect("Database singleton");
+        let database = app
+            .context
+            .get_singleton::<Database>()
+            .await
+            .expect("Database singleton");
+        let handle = app.context.get_singleton::<AppHandle>().await.expect("AppHandle singleton");
         Self {
+            handle,
             database,
             cache: Arc::new(RwLock::new(Cache::new())),
         }

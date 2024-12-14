@@ -1,6 +1,6 @@
 
 import { MdAdd, MdFolder, MdFolderOpen, MdOutlineFolder, MdOutlineFolderOpen } from "react-icons/md";
-import { FaTasks } from "react-icons/fa";
+import { FaSearchMinus, FaSearchPlus, FaTasks } from "react-icons/fa";
 import { FaArrowLeft, FaChevronRight, FaChevronDown, FaChevronUp, FaPause, FaPlay,  FaTrash, FaChevronLeft, FaCircleXmark, FaEye, FaEyeSlash, FaGear, FaMinus, FaPen, FaSquare, FaVolumeLow, FaWindowMaximize, FaXmark } from "react-icons/fa6";
 
 interface IconProps {
@@ -8,6 +8,14 @@ interface IconProps {
     width?: number;
     height?: number;
     className?: string;
+}
+
+export function IconZoomIn(props: IconProps) {
+    return <FaSearchPlus width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} className={props.className} />;
+}
+
+export function IconZoomOut(props: IconProps) {
+    return <FaSearchMinus width={props.width} height={props.height} color={props.color ? props.color : "#4b5563"} className={props.className} />;
 }
 
 export function IconVolumeLow(props: IconProps) {
