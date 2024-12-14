@@ -7,6 +7,7 @@ use selectia_audio_file::{
     audio_file::{AudioFilePayload, EncodedAudioFile},
     error::{AudioFileError, AudioFileResult},
 };
+use spleeter::AudioData;
 use std::time::Instant;
 
 #[derive(Clone, Debug)]
@@ -93,53 +94,56 @@ impl FileAnalysisTask {
             .await?;
         let input_file_path = PathBuf::from(&file.path);
 
-        let (temp_dir, analyzed_audio_file) = tokio::task::spawn_blocking(move || {
+        let (temp_dir, payload) = tokio::task::spawn_blocking(move || {
             let dir = tempdir::TempDir::new("task_analysis").unwrap();
             let encoded_file = EncodedAudioFile::from_file(&input_file_path)?;
+            let payload = encoded_file.read_into_payload()?;
 
-            // TODO: ensure that the payload actualy contains some beats (not just slilence or too quite portion)
-            let analysed_wave = encoded_file.read_mono_wave_until(|f| {
-                let duration = f.duration();
-                Ok(duration < MIN_ANALYSIS_DURATION)
-            })?;
-
-            let audio_to_split = dir.path().join("analyzed.wav");
-            analysed_wave.save_wav32(&audio_to_split)?;
 
             let export_dir = dir.path().join("export");
             info!(
                 stem_path = export_dir.to_str().unwrap(),
-                sample_rate = analysed_wave.sample_rate(),
-                duration = analysed_wave.duration(),
+                sample_rate = payload.sample_rate,
+                duration = payload.duration,
                 "Payload ready for stem extraction"
             );
-            AudioFileResult::Ok((dir, audio_to_split))
+            AudioFileResult::Ok((dir, payload))
         })
         .await??;
 
-        let (callback, recv) = TaskCallback::new();
-        let task = DemuxerTask::Demux {
-            input: analyzed_audio_file.clone(),
-            output: temp_dir.path().join("stems"),
-            callback,
-        };
 
-        let begin = Instant::now();
-        context.demuxer.send(task).await?;
-        let demux_result = recv.wait().await?;
-        info!(
-            duration = begin.elapsed().as_secs_f32(),
-            "Stem extraction task completed"
-        );
+        let spleeter_model = spleeter::get_models_from_index(PathBuf::from("C:\\Users\\corbe\\Desktop\\spleeter\\index.json")).unwrap();
+        let model = spleeter_model.iter().find(|m| m.info.name == "4stems").unwrap();
+        let result = spleeter::split_pcm_audio(&AudioData {
+            sample_rate: payload.sample_rate as usize,
+            nb_channels: payload.channels as usize,
+            samples: payload.buffer.buffer,
+        }, &model).unwrap();
 
-        let drum_stem = demux_result
-            .get_stem(DemuxResult::DRUMS)
-            .ok_or(AudioFileError::AudioSeparationFailed)?;
-        let drum_file_path = PathBuf::from(drum_stem.path.as_str());
+        let drums_stem = result.into_iter().find(|s| s.name == "drums").unwrap().data;
+        let payload = AudioFilePayload::from_interleaved_samples(payload.sample_rate, payload.channels, drums_stem.samples)?;
+        // let (callback, recv) = TaskCallback::new();
+        // let task = DemuxerTask::Demux {
+        //     input: analyzed_audio_file.clone(),
+        //     output: temp_dir.path().join("stems"),
+        //     callback,
+        // };
+
+        // let begin = Instant::now();
+        // context.demuxer.send(task).await?;
+        // let demux_result = recv.wait().await?;
+        // info!(
+        //     duration = begin.elapsed().as_secs_f32(),
+        //     "Stem extraction task completed"
+        // );
+
+        // let drum_stem = demux_result
+        //     .get_stem(DemuxResult::DRUMS)
+        //     .ok_or(AudioFileError::AudioSeparationFailed)?;
+        // let drum_file_path = PathBuf::from(drum_stem.path.as_str());
 
         let _bpm_analysis_result = tokio::task::spawn_blocking(move || {
-            let wave = EncodedAudioFile::from_file(drum_file_path)
-                .and_then(|f| f.read_mono_wave_until(|_w| Ok(true)))?;
+            let wave = payload.wave();
             let mut wave = wave.filter(
                 wave.duration(),
                 &mut (highpass_hz(38.0, 0.7) >> lowpass_hz(1000.0, 0.7)),
