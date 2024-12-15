@@ -1,5 +1,5 @@
 use models::Task as TaskModel;
-use tasks::{BackgroundTask, TaskContext, TaskPayload, TaskStatus};
+use tasks::{BackgroundTask, TaskPayload, TaskStatus};
 
 use crate::prelude::*;
 
@@ -34,7 +34,6 @@ pub async fn worker(
     dispatcher: EventDispatcher<WorkerEvent>,
 ) -> Result<()> {
     let database = ctx.get_singleton::<Database>().await?;
-    let demuxer = ctx.get_singleton_address::<Demuxer>().await?;
     let introspect_address = ctx.get_singleton_address::<Worker>().await?;
     let mut pool = WorkerPool::new(
         DEFAULT_WORKER_POOL_SIZE,
@@ -101,10 +100,7 @@ pub async fn worker(
                 if let Err(e) = pool
                     .spawn(
                         task,
-                        TaskContext {
-                            demuxer: demuxer.clone(),
-                            database: database.clone(),
-                        },
+                        ctx.clone(),
                     )
                     .await
                 {
@@ -155,7 +151,7 @@ impl WorkerPool {
         };
     }
 
-    pub async fn spawn(&mut self, task: TaskModel, context: TaskContext) -> Result<()> {
+    pub async fn spawn(&mut self, task: TaskModel, context: ServiceContext) -> Result<()> {
         info!("Worker spawning task: {:?}", task);
         let task = BackgroundTask::try_from(task)?;
         let handle = tokio::spawn(process_task(context, task.clone(), self.notify.clone()));
@@ -169,7 +165,7 @@ impl WorkerPool {
 }
 
 async fn process_task(
-    context: TaskContext,
+    context: ServiceContext,
     task: BackgroundTask,
     notify: AddressableService<WorkerTask>,
 ) -> Result<()> {

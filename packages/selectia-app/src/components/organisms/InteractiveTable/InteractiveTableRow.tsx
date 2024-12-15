@@ -11,7 +11,6 @@ import { useDrag, useDrop } from "react-dnd";
 import {
     IconChevronDown,
     IconChevronLeft,
-    IconChevronRight,
     IconEdit,
     IconTrash,
 } from "../../atoms/Icon";

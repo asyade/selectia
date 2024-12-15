@@ -24,7 +24,10 @@ impl LoadDirectory {
                 if path.is_dir() {
                     to_be_processed.push_back(path);
                 } else if path.is_audio_file() {
-                    if let Err(e) = self.file_loader.send(file_loader::FileLoaderTask::LoadFile(path.to_path_buf())).await {
+                    if let Err(e) = self.file_loader.send(file_loader::FileLoaderTask::LoadFile {
+                        path: path.to_path_buf(),
+                        callback: None,
+                    }).await {
                         error!(path = ?path, error = ?e, "Error loading file");
                     }
                 }

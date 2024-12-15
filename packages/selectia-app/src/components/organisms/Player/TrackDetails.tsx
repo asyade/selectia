@@ -1,7 +1,5 @@
 import { DeckFileStatus } from "../../../selectia-tauri/dto/models";
 import { DeckFilePayloadSnapshot } from "../../../selectia-tauri/dto/models";
-import { Button } from "../../atoms/Button";
-import { IconPlay } from "../../atoms/Icon";
 import { Label } from "../../atoms/Label";
 import Knob from "../../molecules/Knob";
 
@@ -71,14 +69,3 @@ function formatTime(time: number) {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function RangeSlider(props: {
-    min: number;
-    max: number;
-    value: number;
-    onChange: (value: number) => void;
-}) {
-    return (
-        <div>
-        </div>
-    );
-}

@@ -11,7 +11,7 @@ use sync::{Mutex, OwnedRwLockWriteGuard, RwLock};
 
 use crate::prelude::*;
 
-pub trait ServiceHostContext: Clone + Send + Sync {
+pub trait ServiceHostContext: Clone + Send + Sync + 'static {
     fn is_ready(&self) -> impl Future<Output = bool> + Send + 'static;
     fn register_singleton<T: Any + Send + Sync>(
         &self,

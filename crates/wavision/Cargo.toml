@@ -1,0 +1,10 @@
+[package]
+name = "wavision"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+imageproc = "0.25.0"
+image = { version = "0.25.0" }
+thiserror = "2.0"
+tracing = "0.1"

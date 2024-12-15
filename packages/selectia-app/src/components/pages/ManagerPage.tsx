@@ -24,18 +24,16 @@ import {
     DropDownButton,
     DropZoneDecorator,
     IconCirclePlus,
-    IconXmark,
     Player,
     PlayerProps,
     TrackControls,
 } from "..";
 import { useDrop } from "react-dnd";
-import { EntryView, FileVariation } from "../../selectia-tauri/dto/models";
+import { EntryView } from "../../selectia-tauri/dto/models";
 import {
     useDeckMetadata,
     useDeckStatus,
 } from "../../selectia-tauri/hooks/UseAudioPlayer";
-import { useEffect } from "react";
 import { Console } from "../organisms/Console";
 
 export const ItemTypes = {
@@ -110,7 +108,7 @@ export function ManagerPage() {
     };
 
     const components = {
-        "console": (props: IDockviewPanelProps) => {
+        "console": (_props: IDockviewPanelProps) => {
             return <Console />;
         },
         "explorer": (props: IDockviewPanelProps) => {

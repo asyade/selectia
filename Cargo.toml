@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["packages/selectia-app/src-tauri", "crates/selectia", "crates/selectia-audio-file", "crates/selectia-tauri", "crates/selectia-tauri-dto", "crates/demucs", "crates/macromamba", "crates/theater/theater-core", "crates/theater/theater-derive", "crates/spleeter"]
+members = ["packages/selectia-app/src-tauri", "crates/selectia", "crates/selectia-audio-file", "crates/selectia-tauri", "crates/selectia-tauri-dto", "crates/demucs", "crates/macromamba", "crates/theater/theater-core", "crates/theater/theater-derive", "crates/spleeter", "crates/wavision"]

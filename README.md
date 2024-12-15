@@ -1,9 +1,15 @@
 # Selectia [WIP]
-
-Selectia provides a modern interface for managing your music library and
-organizing your music files.
+Selectia is a music player and library manager for DJs.
+It feature exeperimental features to help manage and play tracks in advanced ways.
 
 ## Features
+
+### Precise track events detection
+Commonon features such a tempo and beat grid analysis are still WIP but with promising results.
+With the current technis it also possible to detect events within a track such as beats, bars, drops, etc...
+As the audio analysis is done by spliting the audio into stems (i.e vocals, drums, bass, etc...) we should be able to implement some interesting features.
+- Generate midi notes based on audio stems (i.e generate a midi file for drums, bass, vocals etc)
+- Apply FX based on audio stems (i.e apply a reverb to vocals only)
 
 ### Library management
 
@@ -24,38 +30,6 @@ using a combination of pattern matching and AI. Selectia can also suggest tags
 based on the file name, the file path, the audio data and existing tags to allow
 fast and non repetitive tagging.
 
-### Audio file analysis
-
-Selectia can analyze audio files to extract metadata such as bpm, key, energy,
-danceability, etc...
-
-### Audio editing
-
-Selectia can edit audio files to remove silence, normalize volume, etc... It can
-host VST plugins to apply custom effects to audio files as well.
-
-### Audio file normalization
-
-Selectia can normalize audio files to ensure consistent playback quality across
-your library.
-
-### Audio file conversion
-
-Selectia can convert audio files to different formats to ensure compatibility
-across your library.
-
-### Upscaling
-
-Selectia can upscale audio files to improve the playback quality.
-
-### Playlists
-
-### Dependencies
-Unfortuatly selectia require a strong GPU to perform well. (it may run on CPU but it will be too slow for most people and may crash and some audio file).
-
-** Note ** Need more details here.
-> This fix somme issue https://stackoverflow.com/questions/78024121/cannot-convince-pytorch-to-install-with-cuda-windows-11
-Make sure to have CUDA Toolkit 11.1.0 installed.
 
 ## Development
 
@@ -65,6 +39,9 @@ Make sure to have CUDA Toolkit 11.1.0 installed.
 - Yarn
 - Rust nightly
 - SQLite system library
+- Tensorflow >2.x
+  Note: Tensorflow library must be reachable from node install directory to work in dev mode
+        prebuilt tensorflow.dll can be found in `packages/selectia-app/src-tauri/resources/tensorflow.dll`
 
 <details>
     <summary>Running the app in dev mode</summary>

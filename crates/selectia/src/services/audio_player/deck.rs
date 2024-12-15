@@ -59,8 +59,8 @@ pub struct DeckFilePreview {
 
 #[derive(Clone, Debug)]
 pub struct DeckFilePayload {
-    pub payload: Arc<RwLock<AudioFilePayload>>,
-    pub preview: Option<Arc<RwLock<AudioFilePayload>>>,
+    pub payload: Arc<RwLock<AudioFilePayload<'static>>>,
+    pub preview: Option<Arc<RwLock<AudioFilePayload<'static>>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -212,7 +212,7 @@ impl DeckFilePayloadSnapshot {
                     original_sample_rate: sample_rate,
                     sample_rate: preview_payload.sample_rate,
                     channels_count: preview_payload.channels as usize,
-                    samples: preview_payload.buffer.buffer.clone(),
+                    samples: preview_payload.buffer.buffer.to_vec(),
                 })
             }
             None => None,

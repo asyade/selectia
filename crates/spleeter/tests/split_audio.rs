@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use spleeter::prelude::*;
 use selectia_audio_file::{audio_file::{AudioFilePayload, EncodedAudioFile}, prelude::*};
 
@@ -22,12 +24,12 @@ pub fn test_split_audio() {
     let audio = AudioData {
         sample_rate: payload.sample_rate as usize,
         nb_channels: payload.channels as usize,
-        samples: payload.buffer.buffer,
+        samples: Cow::Owned(payload.buffer.buffer.to_vec()),
     };
     let result = split_pcm_audio(&audio, &model).unwrap();
 
     for (i, result) in result.into_iter().enumerate() {
-        let encoded = AudioFilePayload::from_interleaved_samples(payload.sample_rate, payload.channels, result.data.samples).unwrap();
+        let encoded = AudioFilePayload::from_interleaved_samples(payload.sample_rate, payload.channels, result.data.samples.to_vec()).unwrap();
         let encoded = encoded.wav_export(payload.sample_rate as u32, PathBuf::from(format!("C:\\Users\\corbe\\Desktop\\test{}.wav", &result.name)));
     }
 }

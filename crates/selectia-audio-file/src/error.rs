@@ -21,6 +21,8 @@ pub enum AudioFileError {
     OutOfBounds,
     #[error("Invalid sample rate")]
     InvalidSampleRate,
+    #[error("Invalid channel count, expected {expected}, got {got}")]
+    InvalidChannelCount { expected: u32, got: u32 },
 }
 
 pub type AudioFileResult<T> = Result<T, AudioFileError>;

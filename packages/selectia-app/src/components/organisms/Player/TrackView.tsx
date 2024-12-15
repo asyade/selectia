@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeckFilePayloadSnapshot, DeckFilePreview, DeckFileStatus } from "../../../selectia-tauri/dto/models";
-import { useDeckPayload, useDeckStatus } from "../../../selectia-tauri/hooks/UseAudioPlayer";
 import { Button } from "../../atoms/Button";
 import { IconZoomIn, IconZoomOut } from "../../atoms/Icon";
 import { set_deck_file_status } from "../../../selectia-tauri";
@@ -99,7 +98,7 @@ export function TrackView(
     );
 }
 
-function ViewControls(props: {}) {
+function ViewControls(_props: {}) {
     return (
         <div className="absolute top-0 left-0 flex flex-row items-start justify-center">
             <Button onClick={() => {}}>
@@ -136,7 +135,7 @@ function trackProgress(
 }
 
  function SamplesView(
-    { audioBuffer, width, height, bpm, grid_offset }: SamplesViewProps,
+    { audioBuffer, width, height }: SamplesViewProps,
 ) {
     console.log("Redrawing samples view");
     const canvasRef = useRef<HTMLCanvasElement>(null);

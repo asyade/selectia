@@ -9,5 +9,6 @@ pub mod services;
 pub mod tasks;
 pub mod ext;
 pub mod analyser;
+pub mod test_utils;
 
 pub use selectia_audio_file as audio_file;

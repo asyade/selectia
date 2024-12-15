@@ -7,9 +7,9 @@ use symphonia::core::{
 
 #[derive(Clone)]
 pub enum AnySampleBuffer<'a> {
-    S16(Cow<'a, InterleveadSampleBuffer<i16>>),
-    S32(Cow<'a, InterleveadSampleBuffer<i32>>),
-    F32(Cow<'a, InterleveadSampleBuffer<f32>>),
+    S16(InterleveadSampleBuffer<'a, i16>),
+    S32(InterleveadSampleBuffer<'a, i32>),
+    F32(InterleveadSampleBuffer<'a, f32>),
 }
 
 pub enum SampleFormat {
@@ -18,16 +18,16 @@ pub enum SampleFormat {
 }
 
 #[derive(Clone)]
-pub struct InterleveadSampleBuffer<T> {
-    pub buffer: Vec<T>,
+pub struct InterleveadSampleBuffer<'a, T: Clone> {
+    pub buffer: Cow<'a, Vec<T>>,
     pub rate: f64,
     pub channels: u32,
 }
 
-impl<T: symphonia::core::sample::Sample> InterleveadSampleBuffer<T> {
+impl<'a, T: symphonia::core::sample::Sample> InterleveadSampleBuffer<'a, T> {
     pub fn from_samples(rate: f64, channels: u32, samples: Vec<T>) -> Self {
         Self {
-            buffer: samples,
+            buffer: Cow::Owned(samples),
             rate,
             channels,
         }
@@ -44,11 +44,12 @@ impl<T: symphonia::core::sample::Sample> InterleveadSampleBuffer<T> {
         // Ensure that the capacity of the sample buffer is greater than or equal to the number
         // of samples that will be copied from the source buffer.
         let base_offset = self.buffer.len();
-        self.buffer.resize(self.buffer.len() + n_samples, T::MID);
+        let buffer = self.buffer.to_mut();
+        buffer.resize(buffer.len() + n_samples, T::MID);
         for ch in 0..n_channels {
             let ch_slice = src.chan(ch);
             let offset = ch + base_offset;
-            for (dst, src) in self.buffer[offset..]
+            for (dst, src) in buffer[offset..]
                 .iter_mut()
                 .step_by(n_channels)
                 .zip(ch_slice)
@@ -56,29 +57,35 @@ impl<T: symphonia::core::sample::Sample> InterleveadSampleBuffer<T> {
                 *dst = (*src).into_sample();
             }
         }
-        self.buffer.len() - base_offset
+        buffer.len() - base_offset
     }
 }
 
 impl<'a> AnySampleBuffer<'a> {
     pub fn new(rate: f64, channels: u32, format: SampleFormat) -> Self {
         match format {
-            SampleFormat::F32 => Self::F32(Cow::Owned(InterleveadSampleBuffer::from_samples(
+            SampleFormat::F32 => Self::F32(InterleveadSampleBuffer::from_samples(
                 rate,
                 channels,
                 vec![],
-            ))),
-            SampleFormat::S16 => Self::S16(Cow::Owned(InterleveadSampleBuffer::from_samples(
+            )),
+            SampleFormat::S16 => Self::S16(InterleveadSampleBuffer::from_samples(
                 rate,
                 channels,
                 vec![],
-            ))),
+            )),
         }
     }
 
-    pub fn into_f32_buffer(self) -> InterleveadSampleBuffer<f32> {
+    pub fn into_f32_buffer(self) -> InterleveadSampleBuffer<'a, f32> {
         match self {
-            Self::F32(buf) => buf.into_owned(),
+            Self::F32(ref_buf) => {
+                InterleveadSampleBuffer {
+                    buffer: ref_buf.buffer.clone(),
+                    rate: ref_buf.rate,
+                    channels: ref_buf.channels,
+                }
+            }
             _ => todo!(),
         }
     }
@@ -105,9 +112,9 @@ impl<'a> AnySampleBuffer<'a> {
         F: symphonia::core::sample::Sample + IntoSample<f32> + IntoSample<i16> + IntoSample<i32>,
     {
         match self {
-            Self::S32(buf) => buf.to_mut().append_interleaved_typed(src),
-            Self::F32(buf) => buf.to_mut().append_interleaved_typed(src),
-            Self::S16(buf) => buf.to_mut().append_interleaved_typed(src),
+            Self::S32(buf) => buf.append_interleaved_typed(src),
+            Self::F32(buf) => buf.append_interleaved_typed(src),
+            Self::S16(buf) => buf.append_interleaved_typed(src),
         }
     }
 
@@ -142,25 +149,25 @@ pub trait FromSamples<'a, T> {
 
 impl<'a> FromSamples<'a, f32> for AnySampleBuffer<'a> {
     fn from_samples(rate: f64, channels: u32, samples: Vec<f32>) -> AnySampleBuffer<'a> {
-        AnySampleBuffer::F32(Cow::Owned(InterleveadSampleBuffer::from_samples(
+        AnySampleBuffer::F32(InterleveadSampleBuffer::from_samples(
             rate, channels, samples,
-        )))
+        ))
     }
 }
 
 impl<'a> FromSamples<'a, i16> for AnySampleBuffer<'a> {
     fn from_samples(rate: f64, channels: u32, samples: Vec<i16>) -> AnySampleBuffer<'a> {
-        AnySampleBuffer::S16(Cow::Owned(InterleveadSampleBuffer::from_samples(
+        AnySampleBuffer::S16(InterleveadSampleBuffer::from_samples(
             rate, channels, samples,
-        )))
+        ))
     }
 }
 
 impl<'a> FromSamples<'a, i32> for AnySampleBuffer<'a> {
     fn from_samples(rate: f64, channels: u32, samples: Vec<i32>) -> AnySampleBuffer<'a> {
-        AnySampleBuffer::S32(Cow::Owned(InterleveadSampleBuffer::from_samples(
+        AnySampleBuffer::S32(InterleveadSampleBuffer::from_samples(
             rate, channels, samples,
-        )))
+        ))
     }
 }
 

@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
     DeckFileMetadataSnapshot,
     DeckFilePayloadSnapshot,
     DeckFileStatus,
 } from "../../../selectia-tauri/dto/models";
-import { useDeck, useDeckPayload, useDeckStatus } from "../../../selectia-tauri/hooks/UseAudioPlayer";
+import {
+    useDeckPayload,
+    useDeckStatus,
+} from "../../../selectia-tauri/hooks/UseAudioPlayer";
 import { DropZoneDecorator } from "../../molecules/DropZoneDecorator";
 import { useDrop } from "react-dnd";
 import { ItemTypes } from "../../pages/ManagerPage";
@@ -28,10 +30,8 @@ export interface PlayerProps {
 }
 
 export function Player(props: PlayerProps) {
-
     const [payload] = useDeckPayload(props.deckId, props.payload);
-    const [status, setStatus] = useDeckStatus(props.deckId, props.status);
-
+    const [status, _setStatus] = useDeckStatus(props.deckId, props.status);
 
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
         accept: [

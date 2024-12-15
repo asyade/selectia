@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::{path::PathBuf, sync::LazyLock};
+use std::{borrow::Cow, path::PathBuf};
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};
 
 mod error;
@@ -20,18 +20,20 @@ pub struct SpleeterModel {
     pub path: PathBuf,
 }
 
-pub struct Stem {
+#[derive(Clone)]
+pub struct Stem<'a> {
     pub name: String,
-    pub data: AudioData,
+    pub data: AudioData<'a>,
 }
 
-pub struct AudioData {
+#[derive(Clone)]
+pub struct AudioData<'a> {
     pub sample_rate: usize,
     pub nb_channels: usize,
-    pub samples: Vec<f32>,
+    pub samples: Cow<'a, [f32]>,
 }
 
-impl std::fmt::Debug for AudioData {
+impl std::fmt::Debug for AudioData<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "AudioData {{ sample_rate: {}, nb_channels: {}, samples: [{}...] }}", self.sample_rate, self.nb_channels, self.samples.len())
     }
@@ -60,7 +62,7 @@ pub fn get_models_from_index(index_path: impl AsRef<Path>) -> SpleeterResult<Vec
 }
 
 #[instrument]
-pub fn split_pcm_audio(audio: &AudioData, model: &SpleeterModel) -> SpleeterResult<Vec<Stem>> {
+pub fn split_pcm_audio(audio: &AudioData, model: &SpleeterModel) -> SpleeterResult<Vec<Stem<'static>>> {
     let tensorflow_version = tensorflow::version().unwrap();
     info!(?tensorflow_version);
 
@@ -157,7 +159,7 @@ pub fn split_pcm_audio(audio: &AudioData, model: &SpleeterModel) -> SpleeterResu
             data: AudioData {
                 sample_rate: audio.sample_rate,
                 nb_channels: audio.nb_channels,
-                samples: s,
+                samples: Cow::Owned(s),
             },
         };
         stem

@@ -4,6 +4,7 @@
 use crate::prelude::*;
 use std::collections::BTreeMap;
 
+use ndarray::Array1;
 use selectia_audio_file::audio_file::AudioBeatOneset;
 
 pub struct BpmAnalyserOptions {
@@ -17,8 +18,7 @@ pub struct BpmAnalyser {
 
 #[derive(Debug)]
 pub struct BpmAnalyserResult {
-    pub average_bpm: Option<BpmPlot>,
-    pub alternative_bpm: Vec<f32>,
+    pub average_bpm: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -27,14 +27,6 @@ pub struct BpmPlot {
     offset: usize,
 }
 
-#[derive(Debug)]
-struct OnesetGroup {
-    average_bpm: f32,
-    total_beat_duration: u64,
-    total_beat_count: u64,
-    average_beat_duration: f32,
-    onesets: Vec<AudioBeatOneset>,
-}
 
 impl BpmAnalyser {
     pub fn new(options: BpmAnalyserOptions, onesets: Vec<AudioBeatOneset>) -> Self {
@@ -42,121 +34,59 @@ impl BpmAnalyser {
     }
 
     pub fn get_result(&self) -> Result<BpmAnalyserResult> {
-        let regions = self.grouped_onesets()?;
-        let mut regions = regions
-            .into_iter()
-            .filter(|region| {
-                region.average_bpm >= self.options.range.0
-                    && region.average_bpm <= self.options.range.1
-            })
-            .collect::<Vec<_>>();
-        regions.sort_by(|a, b| a.total_beat_count.cmp(&b.total_beat_count));
+        let diffs: Array1<f64> = Array1::from(self.onesets.windows(2).map(|w| w[1].seconds - w[0].seconds).collect::<Vec<f64>>());
+        let bpms: Array1<f64> = diffs.mapv(|period| 60.0 / period);
 
-        let prefered_region = regions.pop();
+        // dbg!(&bpms);
+        let bpms_variations = bpms.windows(2).into_iter().map(|w| w[1] - w[0]).collect::<Vec<f64>>();
+        // dbg!(&bpms_variations);
 
-        let average_bpm = prefered_region.as_ref().map(|region| region.plot());
+        
+        let median_unfiltered = median(bpms.to_vec());
+        let nbr_oneset_before = bpms.len();
+        let filtered_bpm = bpms.into_iter().filter((|x| {
+            (median_unfiltered - x).abs() < 15.0
+        })).collect::<Vec<_>>();
 
-        let alternative_bpm = regions
-            .into_iter()
-            .map(|region| region.average_bpm)
-            .filter(|bpm| Some(*bpm) != average_bpm.map(|bpm| bpm.bpm))
-            .collect::<Vec<_>>();
+
+        
+        let median_unfiltered = median(filtered_bpm.clone());
+        let filtered_bpm = filtered_bpm.into_iter().filter((|x| {
+            (median_unfiltered - x).abs() < 4.0
+        })).collect::<Vec<_>>();
+
+
+        
+
+
+        let nbr_filtered = nbr_oneset_before - filtered_bpm.len();
+        let average = average(&filtered_bpm);
+        
+        info!(nbr_filtered_beat=nbr_filtered, average_bpm=average,  median_bpm_unfiltered=median_unfiltered, "filtered bpm");
+
+
 
         Ok(BpmAnalyserResult {
-            average_bpm,
-            alternative_bpm,
+            average_bpm: average,
         })
     }
 
-    fn grouped_onesets(&self) -> Result<Vec<OnesetGroup>> {
-        const BPM_REGION_SCALING: f32 = 50.0;
+}
 
-        let mut sorted_onesets = self.onesets.clone();
-        sorted_onesets.sort_by(|a, b| {
-            a.bpm
-                .partial_cmp(&b.bpm)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
 
-        let mut grouped_onesets = BTreeMap::new();
-
-        for oneset in sorted_onesets {
-            let scaled_bpm =
-                ((oneset.bpm / BPM_REGION_SCALING).floor() * BPM_REGION_SCALING) as i64;
-            grouped_onesets
-                .entry(scaled_bpm)
-                .or_insert(Vec::new())
-                .push(oneset);
-        }
-
-        let regions = grouped_onesets
-            .into_iter()
-            .map(|(_bpm, onesets)| {
-                let average_bpm =
-                    onesets.iter().map(|oneset| oneset.bpm).sum::<f32>() / onesets.len() as f32;
-                let total_beat_duration = onesets
-                    .iter()
-                    .map(|oneset| oneset.duration as u64)
-                    .sum::<u64>();
-                let total_beat_count = onesets.len() as u64;
-                let average_beat_duration = total_beat_duration as f32 / total_beat_count as f32;
-                OnesetGroup {
-                    average_bpm,
-                    total_beat_duration,
-                    total_beat_count,
-                    average_beat_duration,
-                    onesets,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        Ok(regions)
+fn median(arr: impl Into<Vec<f64>>) -> f64 {
+    let mut sorted = arr.into();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let len = sorted.len();
+    if len % 2 == 0 {
+        // Even number of elements: average the two middle ones
+        (sorted[len / 2 - 1] + sorted[len / 2]) / 2.0
+    } else {
+        // Odd number of elements: return the middle one
+        sorted[len / 2]
     }
 }
 
-impl OnesetGroup {
-    fn plot(&self) -> BpmPlot {
-        assert!(self.onesets.len() > 0);
-
-        if self.onesets.len() == 1 {
-            return BpmPlot {
-                bpm: self.onesets[0].bpm,
-                offset: self.onesets[0].offset,
-            };
-        }
-
-        let mut max_bpm = f32::MIN;
-        let mut min_bpm = f32::MAX;
-        for oneset in self.onesets.iter() {
-            max_bpm = max_bpm.max(oneset.bpm as f32);
-            min_bpm = min_bpm.min(oneset.bpm as f32);
-        }
-
-        BpmPlot {
-            bpm: self.average_bpm,
-            offset: self.onesets[0].offset,
-        }
-    }
-
-    fn missalignement_for_bpm(&self, bpm: f32) -> i64 {
-        let base_offset = self.onesets[0].offset;
-        let base_duration = self.onesets[0].duration;
-
-        let bpm_diff = self.onesets[0].bpm - bpm;
-
-        let bpm_diff_ratio = bpm_diff / bpm;
-        let bpm_diff_duration = bpm_diff_ratio * base_duration as f32;
-        let base_duration = f32::ceil(base_duration as f32 - bpm_diff_duration) as usize;
-
-        let mut max_missalignement = 0;
-
-        for oneset in self.onesets.iter() {
-            let relative_missalignement =
-                (oneset.offset as i64 - base_offset as i64) % base_duration as i64;
-            max_missalignement =
-                std::cmp::Ord::max(max_missalignement, relative_missalignement).abs();
-        }
-
-        max_missalignement
-    }
+fn average(arr: &[f64]) -> f64 {
+    arr.iter().sum::<f64>() / arr.len() as f64
 }

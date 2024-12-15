@@ -13,14 +13,14 @@ pub struct EncodedAudioFile {
 }
 
 #[derive(Clone)]
-pub struct AudioFilePayload {
+pub struct AudioFilePayload<'a> {
     pub duration: f64,
     pub sample_rate: f64,
     pub channels: u32,
-    pub buffer: InterleveadSampleBuffer<f32>,
+    pub buffer: InterleveadSampleBuffer<'a, f32>,
 }
 
-impl std::fmt::Debug for AudioFilePayload {
+impl std::fmt::Debug for AudioFilePayload<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "AudioFilePayload {{ duration: {}, sample_rate: {}, channels: {}, frames: {} }}", self.duration, self.sample_rate, self.channels, self.buffer.buffer.len() / self.channels as usize)
     }
@@ -170,7 +170,8 @@ impl EncodedAudioFile {
         wave.ok_or(AudioFileError::EmptyContainer)
     }
 
-    pub fn read_into_payload(mut self) -> AudioFileResult<AudioFilePayload> {
+
+    pub fn read_into_payload(mut self) -> AudioFileResult<AudioFilePayload<'static>> {
         let mut sample_buf = None;
         self.decoded_iterator(|audio_buf| {
             let spec = audio_buf.spec();
@@ -243,7 +244,17 @@ impl EncodedAudioFile {
     }
 }
 
-impl AudioFilePayload {
+impl<'a> AudioFilePayload<'a> {
+
+    
+    pub fn clone_borrowed(&self) -> AudioFilePayload<'a> {
+        AudioFilePayload {
+            duration: self.duration,
+            sample_rate: self.sample_rate,
+            channels: self.channels,
+            buffer: self.buffer.clone(),
+        }
+    }
 
     pub fn from_interleaved_samples(sample_rate: f64, channels: u32, samples: Vec<f32>) -> AudioFileResult<Self> {
         Ok(Self {
@@ -254,7 +265,7 @@ impl AudioFilePayload {
         })
     }
 
-    pub fn generate_preview(&self) -> AudioFileResult<AudioFilePayload> {
+    pub fn generate_preview(&self) -> AudioFileResult<AudioFilePayload<'static>> {
         let resampled = self.resample(1000.0)?;
         Ok(resampled)
     }
@@ -284,7 +295,7 @@ impl AudioFilePayload {
         let mut hop_buffer = vec![0.0; hop_size];
 
         let mut tempo = aubio_rs::Tempo::new(
-            aubio_rs::OnsetMode::SpecDiff,
+            aubio_rs::OnsetMode::Complex,
             win_size,
             hop_size,
             self.sample_rate as u32,
@@ -306,7 +317,10 @@ impl AudioFilePayload {
                 let detected_confidence = tempo.get_confidence();
                 let detected_at_offset = tempo.get_last();
                 let bpm = tempo.get_bpm();
+                let seconds = tempo.get_last_s();
                 beats.push(AudioBeatOneset {
+                    seconds: seconds as f64,
+                    sample_rate: self.sample_rate,
                     offset: detected_at_offset,
                     duration: detected_periode,
                     confidence: detected_confidence,
@@ -349,10 +363,10 @@ impl AudioFilePayload {
             panic!("TODO: this function is broken for multi-channel audio");
         }
         let channel_size = self.buffer.buffer.len() / self.channels as usize;
-        let mut channel_buffers = vec![Vec::with_capacity(channel_size); self.channels as usize];
-        for samples in self.buffer.buffer.chunks(self.channels as usize) {
+        let mut channel_buffers = vec![vec![0.0; channel_size]; self.channels as usize];
+        for (offset, samples) in self.buffer.buffer.chunks(self.channels as usize).enumerate() {
             for channel in 0..self.channels as usize {
-                channel_buffers[channel].push(samples[channel]);
+                channel_buffers[channel][offset] = samples[channel];
             }
         }
 
@@ -381,9 +395,10 @@ impl AudioFilePayload {
         })
     }
 
-    pub fn into_mono(self) -> AudioFileResult<AudioFilePayload> {
+
+    pub fn into_mono(self) -> AudioFileResult<AudioFilePayload<'static>> {
         if self.channels == 1 {
-            return Ok(self);
+            return Err(AudioFileError::InvalidChannelCount { expected: 2, got: self.channels });
         }
 
         if self.channels == 2 {
@@ -411,7 +426,7 @@ impl AudioFilePayload {
 
     /// Resample the audio file to the given sample rate.
     /// The audio file will be converted to f32 samples (returned payload is always f32).
-    pub fn resample(&self, sample_rate: f64) -> AudioFileResult<AudioFilePayload> {
+    pub fn resample(&self, sample_rate: f64) -> AudioFileResult<AudioFilePayload<'static>> {
         let interpolator = dasp::interpolate::linear::Linear::new(0.0, 0.0);
         let signal = dasp::signal::from_iter(self.buffer.buffer.iter().copied());
         let resampler =
@@ -449,6 +464,8 @@ impl AudioFilePayload {
 
 #[derive(Clone, Debug)]
 pub struct AudioBeatOneset {
+    pub seconds: f64,
+    pub sample_rate: f64,
     pub offset: usize,
     pub duration: usize,
     pub confidence: f32,
