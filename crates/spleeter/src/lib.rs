@@ -1,3 +1,11 @@
+//! Facebook's Spleeter model implementation using tensorflow library.
+//! The crate is focused on performances and ease of use and does not handle encoding/decoding of audio files.
+//! The input audio data is expected to be in PCM format, generated stems are returned as PCM audio data as well.
+//! 
+//! ** Note **
+//! In his current state the crate may cause you troble at compile time because build scripts are made yet.
+//! If you get tensorflow >2 installed on the host machine you should be good to go but may have some troble using the crate with `tauri`
+
 use crate::prelude::*;
 use std::{borrow::Cow, path::PathBuf};
 use tensorflow::{Graph, SavedModelBundle, SessionOptions, SessionRunArgs, Tensor};

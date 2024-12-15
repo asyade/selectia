@@ -1,5 +1,6 @@
 //! This crate provide an interface around micromamba (https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html)
 //! It also provide helper function to download and install the micromamba binary.
+//! Helpfull for prototyping and testing its not recomanded for best performances and interoperability.
 //! 
 //! # ** WIP **
 //! In his current state the crate is not ready for production use.
